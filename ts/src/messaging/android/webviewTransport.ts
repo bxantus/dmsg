@@ -13,12 +13,13 @@
  *     only as a string, so serialization should be performed to string as well
  */
 class WebviewTransport {
-    send(message:Uint8Array) {
+    messageReceiver:((message:Uint8Array) => void)|undefined = undefined
+    send(message:Uint8Array[]) {
 
     }
 
     receive(message:Uint8Array) {
-
+        this.messageReceiver?.(message)
     }
 }
 

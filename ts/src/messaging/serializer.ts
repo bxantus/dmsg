@@ -1,17 +1,42 @@
 // serialize messages in Uint8Array format
-// all messages have a unique id, and a message type field
-//
-// supported message types:
-//    * call:          [object:handle] [...args]
-//      `object(...args)`
-//    * callObjectPath [objpath:string] [...args]
-//      `get(obj.path).call(...args)`
-//    * get            [obj|objPath] [propName]
-//    * construct      [object: handle] [...args] - object is a handle describing a class
-//      `new ObjType(...args)`
+// overview:
+//   - basic types like number, string, etc. will be serialized as tagged values (type, val)
+//   - objects may be of 3 types
+//     - simple object literals (no class instance etc.): will be serialized unpacked, with all fields recursively serialized
+//     - arrays will probably serialize fully as well, but maybe this isn't inteded we could use Tuple's for this (const array)
+//     - objects received from the other peer (remote objects) will be serailized by object handle
+//     - all other objects will be serialized as object handles (objects mapped to a unique id at our side)
 
-// Example scenario/messages
-//    loadModule("android/positioning") // like a js module just implemented in kotlin/java
-//         module will contain a list of exported objects: functions and constructable types
-//         some kind of module implementor code could attach to this list and wrap to typescript interfaces
-//         goal would be to intercept `obj.func(...args)` calls (with Proxy for ex) and transform them to async functions 
+enum SerializerTypes {
+    Undef,
+    Int,
+    Double,
+    String,
+    ObjectHandle,
+    RemoteObjectHandle,
+    Array,
+    Object, // an object consisting of key/value pairs
+}
+
+export class Serializer {
+    // todo: collect messages in list of Utf8Arrays (chunks), it is up to transport to send them efficiently
+
+    writeMessageHeader() {
+
+    }
+
+    writeValue(val:any) {
+
+    }
+
+    // the functions below just serialize the objects without any typetags
+    // use writeValue to output objects with typetags
+
+    writeString(s:string) {
+
+    }
+}
+
+export class Deserializer {
+
+}
