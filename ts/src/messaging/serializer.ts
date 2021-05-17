@@ -46,7 +46,7 @@ export class Serializer {
 
     writeMessageHeader(dir:MessageDirection, msg:MessageType, messageId:number) {
         this.putByte((dir << 4) | msg)
-        this.putUint16(messageId)
+        this.putUint(messageId)
     }
 
     writeValue(val:any) {
@@ -198,8 +198,99 @@ export class Serializer {
     }
 }
 
-export class Deserializer {
-    constructor(private buf:Uint8Array, private exportedObjects:ObjectStore) {
+type RemoteObjectFactory = (id:number) => any
 
+export class Deserializer {
+    private offs = 0
+    private dv:DataView
+    private objects:object[] = [] // objects read so far (to handle back references)
+    constructor(private buf:Uint8Array, private exportedObjects:ObjectStore, private remoteObjectFactory:RemoteObjectFactory) {
+        this.dv = new DataView(buf)
+    }
+
+    readMessageHeader() {
+        const dirAndType = this.getByte()
+        const id = this.getUint()
+        return {
+            dir: (dirAndType >> 4) as MessageDirection,
+            type: (dirAndType & 0xF) as MessageType,
+            id
+        }
+    }
+
+    readValue():any {
+        const type:SerializerTypes = this.getByte()
+        switch (type) {
+            case SerializerTypes.Undef: return undefined;
+            case SerializerTypes.Bool: return this.getByte() ? true : false;
+            case SerializerTypes.Int: return this.getInt();
+            case SerializerTypes.Double: return this.getDouble();
+            case SerializerTypes.String: return this.getString();
+            case SerializerTypes.ObjectHandle: 
+                // remote object from our point of view
+                return this.remoteObjectFactory(this.getUint())
+            
+            case SerializerTypes.RemoteObjectHandle: 
+                // this should be our own object
+                return this.exportedObjects.getObject(this.getUint())
+            
+            case SerializerTypes.Array: return this.readArray();
+            case SerializerTypes.Object: return this.readRecord();
+            // back reference to an object/array already read from this stream (by idx.)
+            case SerializerTypes.Backref: return this.objects[this.getUint()]; 
+        }
+    }
+
+    readArray():any[] {
+        const arr:any[] = []
+        this.objects.push(arr)
+        const len = this.getUint16()
+        for (let idx = 0; idx < len; ++idx) {
+            arr.push(this.readValue())
+        }
+        return arr
+    }
+
+    readRecord():any {
+        const obj = {}
+        this.objects.push(obj)
+        const len = this.getUint16()
+        for (let idx = 0; idx < len; ++idx) {
+            const prop = this.getString()
+            const val = this.readValue()
+            obj[prop] = val
+        }
+        return obj
+    }
+
+    getString() {
+        const len = this.getUint16()
+        return new TextDecoder().decode(this.buf.subarray(this.offs, this.offs + len))
+    }
+
+    getByte() {
+        return this.buf[this.offs++]
+    }
+
+    getInt() {
+        return this.dv.getInt32(this.incOffset(4))
+    }
+
+    getUint() {
+        return this.dv.getUint32(this.incOffset(4))
+    }
+
+    getUint16() {
+        return this.dv.getUint16(this.incOffset(2))
+    }
+
+    getDouble() {
+        return this.dv.getFloat64(this.incOffset(8))
+    }
+
+    private incOffset(size:number) {
+        const old = this.offs
+        this.offs += size;
+        return old
     }
 }
