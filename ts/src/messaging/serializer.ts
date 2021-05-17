@@ -93,7 +93,7 @@ export class Serializer {
     writeArray(arr:any[]) {
         if (this.registerOrWriteBackref(arr)) return
         this.putByte(SerializerTypes.Array)
-        if (arr.length)
+        if (arr.length >= (1 << 16))
             throw new Error("Array size too big")
         this.putUint16(arr.length)
         for (const val of arr)
@@ -102,8 +102,10 @@ export class Serializer {
 
     writeRecord(obj:any) {
         if (this.registerOrWriteBackref(obj)) return
+        this.putByte(SerializerTypes.Object)
         const dvForSize = this.alloc(2)
         const offsForSize = this.offs
+        this.offs += 2 // leave space for size
         let size = 0
         for (const key in obj) {
             this.putString(key)
@@ -139,32 +141,32 @@ export class Serializer {
         this.putBuffer(utf8Stream)
     }
 
-    private putByte(val:number) {
+    putByte(val:number) {
         const dv = this.alloc(1)
         dv.setUint8(this.incOffset(1), val)
     }
 
-    private putInt(val:number) {
+    putInt(val:number) {
         const dv = this.alloc(4)
         dv.setInt32(this.incOffset(4), val)
     }
 
-    private putUint(val:number) {
+    putUint(val:number) {
         const dv = this.alloc(4)
         dv.setUint32(this.incOffset(4), val)
     }
 
-    private putDouble(val:number) {
+    putDouble(val:number) {
         const dv = this.alloc(8)
         dv.setFloat64(this.incOffset(8), val)
     }
 
-    private putUint16(val:number) {
+    putUint16(val:number) {
         const dv = this.alloc(2)
         dv.setUint16(this.incOffset(2), val)
     }
 
-    private putBuffer(srcBuf:Uint8Array) {
+    putBuffer(srcBuf:Uint8Array) {
         let available = CHUNK_SIZE - this.offs
         if (available == 0) available = CHUNK_SIZE
         let size = Math.min(srcBuf.byteLength, available)
@@ -205,7 +207,7 @@ export class Deserializer {
     private dv:DataView
     private objects:object[] = [] // objects read so far (to handle back references)
     constructor(private buf:Uint8Array, private exportedObjects:ObjectStore, private remoteObjectFactory:RemoteObjectFactory) {
-        this.dv = new DataView(buf)
+        this.dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength)
     }
 
     readMessageHeader() {
@@ -252,7 +254,7 @@ export class Deserializer {
     }
 
     readRecord():any {
-        const obj = {}
+        const obj:any = {}
         this.objects.push(obj)
         const len = this.getUint16()
         for (let idx = 0; idx < len; ++idx) {
@@ -265,7 +267,9 @@ export class Deserializer {
 
     getString() {
         const len = this.getUint16()
-        return new TextDecoder().decode(this.buf.subarray(this.offs, this.offs + len))
+        const s = new TextDecoder().decode(this.buf.subarray(this.offs, this.offs + len))
+        this.offs += len
+        return s
     }
 
     getByte() {
