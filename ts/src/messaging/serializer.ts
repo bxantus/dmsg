@@ -1,4 +1,4 @@
-import { MessagingSymbol } from './messagingConnection.ts'
+import { MessagingSymbol, MessageDirection, MessageType } from './messagingConnection.ts'
 // serialize messages in Uint8Array format
 // overview:
 //   - basic types like number, string, etc. will be serialized as tagged values (type, val)
@@ -37,8 +37,15 @@ export class Serializer {
 
     }
 
-    writeMessageHeader() {
+    getData() {
+        if (this.offs > 0)
+            this.closeChunk()
+        return this.chunks
+    }
 
+    writeMessageHeader(dir:MessageDirection, msg:MessageType, messageId:number) {
+        this.putByte((dir << 4) | msg)
+        this.putUint16(messageId)
     }
 
     writeValue(val:any) {
@@ -177,13 +184,16 @@ export class Serializer {
     }
 
     private alloc(size:number) { // alloc needed size in buffer, create new chunk if needed
-        if (this.offs + size > CHUNK_SIZE) { 
-            this.chunks.push(this.offs == CHUNK_SIZE ? this.buf : new Uint8Array(this.buf, 0, this.offs))
-            this.buf = new Uint8Array(CHUNK_SIZE)
-            this.offs = 0
-            this.dv = new DataView(this.buf.buffer)
-        }
+        if (this.offs + size > CHUNK_SIZE)  
+            this.closeChunk()
         return this.dv
+    }
+
+    private closeChunk() {
+        this.chunks.push(this.offs == CHUNK_SIZE ? this.buf : new Uint8Array(this.buf, 0, this.offs))
+        this.buf = new Uint8Array(CHUNK_SIZE)
+        this.offs = 0
+        this.dv = new DataView(this.buf.buffer)
     }
 
     private incOffset(size:number) {

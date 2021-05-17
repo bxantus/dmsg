@@ -1,3 +1,4 @@
+import { Serializer } from './serializer.ts'
 // all messages have a unique id, and a message type field
 // supported message types:
 //    * call:          [object:handle] [...args] -> this can be constructor as well
@@ -22,7 +23,7 @@ export enum MessageDirection { // both peers may send loadModule, and call reque
     Response
 }
 
-export enum MessageTypes {
+export enum MessageType {
     LoadModule,
     Call,
 }
@@ -38,32 +39,55 @@ export class MessagingConnection {
     }
 
     async loadModule(uri:string) {
-        this.transport.send([new Uint8Array([MessageDirection.Request, MessageTypes.LoadModule, 0])]) // todo: real payload, use serializer
-        return new Promise<any>((res, rej) => {
-            // todo: store resolver, and trigger when onMessageReceived is called
-        })
+        const s = new Serializer(this.exportedObjects)
+        s.writeMessageHeader(MessageDirection.Request, MessageType.LoadModule, ++this.nextMessageId)
+        s.writeValue("loadModule")
+        s.writeArray([uri])
+        this.transport.send(s.getData()) 
+        return this.addRequest(this.nextMessageId)
     }
 
     async callObject(obj:RemoteObj, argArray: any[]):Promise<any> {
-
+        const s = new Serializer(this.exportedObjects)
+        s.writeMessageHeader(MessageDirection.Request, MessageType.Call, ++this.nextMessageId)
+        s.writeValue(obj)       // should be written as remote obj
+        s.writeValue(undefined) // no method, call the object itself
+        s.writeArray(argArray)
+        return this.addRequest(this.nextMessageId)
     }
 
     async callObjectMethod(method:RemoteMethod, argArray: any[]):Promise<any> {
-
+        const s = new Serializer(this.exportedObjects)
+        s.writeMessageHeader(MessageDirection.Request, MessageType.Call, ++this.nextMessageId)
+        s.writeValue(method.obj)       // should be written as remote obj
+        s.writeValue(method.name) 
+        s.writeArray(argArray)
+        return this.addRequest(this.nextMessageId)
     }
 
     private onMessageReceived(message:Uint8Array) {
 
     }
 
+    private addRequest(id:number) {
+        let resolver:(val:any)=>any
+        const promisedResponse = new Promise<any>((resolve, reject) => {
+            resolver = resolve
+        })
+        this.pendingRequests.set(id, resolver!)
+        return promisedResponse
+    }
+
     private nextMessageId = 0
     private exportedObjects = new Map<object, number>()
     private exportedObjectsById = new Map<number, object>()
+    // request id -> resolver mapping
+    private pendingRequests = new Map<number, (val:any)=>any>()
 }
 
 export const MessagingSymbol = {
     RemoteObject : Symbol("RemoteObject"),
-    RemoteObjectId: Symbol("remoteObjectId"),
+    RemoteObjectId: Symbol("RemoteObjectId"),
 }
 
 class RemoteObj extends Function { // should be callable, otherwise apply won't work
