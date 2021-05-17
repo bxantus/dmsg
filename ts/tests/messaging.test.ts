@@ -153,3 +153,57 @@ Deno.test("loadModule simple", async ()=> {
 
     testTransport.verify()
 })
+
+Deno.test("remotecall object simple", async ()=> {
+    // NOTE: for sake of easier understanding this test contains heavy copy paste from the previous loadModule one
+    const testTransport = new TestTransportWithExpectations()
+    const conn = new MessagingConnection(testTransport)
+    
+    const remoteExportedObjects = new ObjectStore()
+    const onRemoteObject = (handle:number) => { return {remote:true, handle}  }
+    // setup expectations
+    const testModuleSpec = { 
+        log(what:string) {
+            console.log("Hello: ", what)
+            return what.length
+        },
+        info: {
+            version: 2.0,
+            name: "test"
+        }
+    }
+    testTransport.expectOnSend(buf => { // loadModule
+        // simulate some response
+        const s = new Serializer(remoteExportedObjects)
+        s.writeMessageHeader(MessageDirection.Response, MessageType.LoadModule, 1)
+        s.writeValue(testModuleSpec)
+        assertEquals(remoteExportedObjects.getObject(0), testModuleSpec.log) // log should be exported
+        testTransport.messageReceiver?.(s.getData()[0])
+    })
+    testTransport.expectOnSend(buf => { // calling log("my dog")
+        const ds = new Deserializer(buf, remoteExportedObjects, onRemoteObject)
+        const header = ds.readMessageHeader()
+        assertEquals(header.dir, MessageDirection.Request)
+        assertEquals(header.type, MessageType.Call)
+        assertEquals(header.id, 2)
+
+        const obj = ds.readValue()
+        const method = ds.readValue()
+        const args = ds.readValue()
+
+        assertEquals(obj, remoteExportedObjects.getObject(0))
+        assertEquals(method, undefined)
+        assertEquals(args, ["my dog"])
+        
+        const s = new Serializer(remoteExportedObjects)
+        s.writeMessageHeader(MessageDirection.Response, MessageType.Call, 2)
+        s.writeValue(obj.apply(obj, args)) // this should call log
+        testTransport.messageReceiver?.(s.getData()[0])
+    })
+
+    // excecise messaging
+    const testModule = await conn.loadModule("test")
+    const lenMydog = await testModule.log("my dog")
+    assertEquals(lenMydog, 6)
+    testTransport.verify()
+})

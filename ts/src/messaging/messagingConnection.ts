@@ -39,6 +39,7 @@ export class MessagingConnection {
         // NOTE: probably will never reject the call promises, instead will return undefined (resolve them with undefined)
     }
 
+    // todo: remove async qualifier and return simply the request promises
     async loadModule(uri:string) {
         const s = new Serializer(this.exportedObjects)
         s.writeMessageHeader(MessageDirection.Request, MessageType.LoadModule, ++this.nextMessageId)
@@ -55,7 +56,10 @@ export class MessagingConnection {
         s.writeValue(obj)       // should be written as remote obj
         s.writeValue(undefined) // no method, call the object itself
         s.writeArray(argArray)
-        return this.addRequest(this.nextMessageId)
+
+        const promisedResponse = this.addRequest(this.nextMessageId)
+        this.transport.send(s.getData()) 
+        return promisedResponse
     }
 
     async callObjectMethod(method:RemoteMethod, argArray: any[]):Promise<any> {
@@ -64,7 +68,10 @@ export class MessagingConnection {
         s.writeValue(method.obj)       // should be written as remote obj
         s.writeValue(method.name) 
         s.writeArray(argArray)
-        return this.addRequest(this.nextMessageId)
+
+        const promisedResponse = this.addRequest(this.nextMessageId)
+        this.transport.send(s.getData()) 
+        return promisedResponse
     }
 
     private onMessageReceived(message:Uint8Array) {
@@ -109,7 +116,7 @@ export const MessagingSymbol = {
     RemoteObjectId: Symbol("RemoteObjectId"),
 }
 
-class RemoteObj extends Function { // should be callable, otherwise apply won't work
+export class RemoteObj extends Function { // should be callable, otherwise apply won't work
     id:number
     conn:MessagingConnection
     constructor(initializer:{id:number, conn:MessagingConnection}) {

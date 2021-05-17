@@ -1,4 +1,4 @@
-import { MessagingSymbol, MessageDirection, MessageType } from './messagingConnection.ts'
+import { MessagingSymbol, MessageDirection, MessageType, RemoteObj } from './messagingConnection.ts'
 import ObjectStore from './objectStore.ts'
 // serialize messages in Uint8Array format
 // overview:
@@ -88,8 +88,13 @@ export class Serializer {
                     this.writeRecord(val)
             } break;
             case "function": { // functions always exported as handle
-                this.putByte(SerializerTypes.ObjectHandle)
-                this.putUint(this.exportedObjects.getHandle(val))
+                if (val instanceof RemoteObj) {
+                    this.putByte(SerializerTypes.RemoteObjectHandle)
+                    this.putUint(val.id)
+                } else {
+                    this.putByte(SerializerTypes.ObjectHandle)
+                    this.putUint(this.exportedObjects.getHandle(val))
+                }
             } break;
         }
     }
@@ -240,14 +245,14 @@ export class Deserializer {
                 // this should be our own object
                 return this.exportedObjects.getObject(this.getUint())
             
-            case SerializerTypes.Array: return this.readArray();
-            case SerializerTypes.Object: return this.readRecord();
+            case SerializerTypes.Array: return this.getArray();
+            case SerializerTypes.Object: return this.getRecord();
             // back reference to an object/array already read from this stream (by idx.)
             case SerializerTypes.Backref: return this.objects[this.getUint()]; 
         }
     }
 
-    readArray():any[] {
+    getArray():any[] {
         const arr:any[] = []
         this.objects.push(arr)
         const len = this.getUint16()
@@ -257,7 +262,7 @@ export class Deserializer {
         return arr
     }
 
-    readRecord():any {
+    getRecord():any {
         const obj:any = {}
         this.objects.push(obj)
         const len = this.getUint16()
