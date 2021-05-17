@@ -1,4 +1,5 @@
 import { Serializer } from './serializer.ts'
+import ObjectStore from './objectStore.ts'
 // all messages have a unique id, and a message type field
 // supported message types:
 //    * call:          [object:handle] [...args] -> this can be constructor as well
@@ -79,8 +80,7 @@ export class MessagingConnection {
     }
 
     private nextMessageId = 0
-    private exportedObjects = new Map<object, number>()
-    private exportedObjectsById = new Map<number, object>()
+    private exportedObjects = new ObjectStore()
     // request id -> resolver mapping
     private pendingRequests = new Map<number, (val:any)=>any>()
 }

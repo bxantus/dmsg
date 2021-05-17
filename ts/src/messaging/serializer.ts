@@ -1,4 +1,5 @@
 import { MessagingSymbol, MessageDirection, MessageType } from './messagingConnection.ts'
+import ObjectStore from './objectStore.ts'
 // serialize messages in Uint8Array format
 // overview:
 //   - basic types like number, string, etc. will be serialized as tagged values (type, val)
@@ -33,7 +34,7 @@ export class Serializer {
     private offs = 0
     private serializedObjects = new Map<object, number>()
 
-    constructor(private exportedObjects:Map<object, number>) {
+    constructor(private exportedObjects:ObjectStore) {
 
     }
 
@@ -82,13 +83,7 @@ export class Serializer {
                 else if (val.constructor.name != "Object") {
                     // some kind of an object, different from a plain obj. literal
                     this.putByte(SerializerTypes.ObjectHandle)
-                    let objId = this.exportedObjects.get(val)
-                    // export object if needed
-                    if (objId == undefined) {
-                        objId = this.exportedObjects.size
-                        this.exportedObjects.set(val, objId)
-                    }
-                    this.putUint(objId)
+                    this.putUint(this.exportedObjects.getHandle(val))
                 } else 
                     this.writeRecord(val)
             } break;
@@ -204,5 +199,7 @@ export class Serializer {
 }
 
 export class Deserializer {
+    constructor(private buf:Uint8Array, private exportedObjects:ObjectStore) {
 
+    }
 }

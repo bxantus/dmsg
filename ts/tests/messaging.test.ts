@@ -1,9 +1,10 @@
 import { Serializer, SerializerTypes } from '../src/messaging/serializer.ts'
 import { MessagingConnection } from '../src/messaging/messagingConnection.ts'
 import { assertEquals } from "https://deno.land/std@0.96.0/testing/asserts.ts";
+import ObjectStore from "../src/messaging/objectStore.ts"
 
 Deno.test("serialize string", ()=> {
-    const exportedObjects = new Map<object, number>()
+    const exportedObjects = new ObjectStore()
     const s = new Serializer(exportedObjects)
     s.writeValue("alma")
     const res = s.getData()
