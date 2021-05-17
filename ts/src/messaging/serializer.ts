@@ -200,7 +200,7 @@ export class Serializer {
     }
 }
 
-type RemoteObjectFactory = (id:number) => any
+export type RemoteObjectFactory = (id:number) => any
 
 export class Deserializer {
     private offs = 0

@@ -1,4 +1,4 @@
-import { Serializer } from './serializer.ts'
+import { Serializer, Deserializer, RemoteObjectFactory } from './serializer.ts'
 import ObjectStore from './objectStore.ts'
 // all messages have a unique id, and a message type field
 // supported message types:
@@ -67,7 +67,25 @@ export class MessagingConnection {
     }
 
     private onMessageReceived(message:Uint8Array) {
+        const createRemoteObject:RemoteObjectFactory = handle => 
+            new Proxy(new RemoteObj({id:handle, conn:this}), new RemoteObjectTraps())
+         
+        const ds = new Deserializer(message, this.exportedObjects, createRemoteObject)
+        const header = ds.readMessageHeader()
+        if (header.dir == MessageDirection.Response) {
+            const request = this.pendingRequests.get(header.id)
+            if (!request) throw new Error("Invalid response received, no matching request found")
+            this.pendingRequests.delete(header.id)
 
+            if (header.type == MessageType.LoadModule) {
+                request(ds.readValue()) // loadModule response encoded in a value, hopefully a record of remote objects
+            } else if (header.type == MessageType.Call) {
+                request(ds.readValue()) // call result should be encoded in a single value as well
+            }
+        } else { 
+            // todo: a request for us to process
+            //       it needs at least a module registry or something similar to answer loadModule requests
+        }
     }
 
     private addRequest(id:number) {
