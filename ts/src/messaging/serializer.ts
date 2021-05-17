@@ -8,7 +8,7 @@ import { MessagingSymbol, MessageDirection, MessageType } from './messagingConne
 //     - objects received from the other peer (remote objects) will be serailized by object handle
 //     - all other objects will be serialized as object handles (objects mapped to a unique id at our side)
 
-enum SerializerTypes {
+export enum SerializerTypes {
     Undef,
     Bool,
     Int,
@@ -105,7 +105,7 @@ export class Serializer {
             this.writeValue(val)
     }
 
-    writeRecord(obj:Object) {
+    writeRecord(obj:any) {
         if (this.registerOrWriteBackref(obj)) return
         const dvForSize = this.alloc(2)
         const offsForSize = this.offs
@@ -190,7 +190,7 @@ export class Serializer {
     }
 
     private closeChunk() {
-        this.chunks.push(this.offs == CHUNK_SIZE ? this.buf : new Uint8Array(this.buf, 0, this.offs))
+        this.chunks.push(this.offs == CHUNK_SIZE ? this.buf : this.buf.subarray(0, this.offs))
         this.buf = new Uint8Array(CHUNK_SIZE)
         this.offs = 0
         this.dv = new DataView(this.buf.buffer)
