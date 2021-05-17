@@ -58,9 +58,13 @@ export class MessagingConnection {
 
     private nextMessageId = 0
     private exportedObjects = new Map<object, number>()
-    private exportedObjectIds = new Map<number, object>()
+    private exportedObjectsById = new Map<number, object>()
 }
 
+export const MessagingSymbol = {
+    RemoteObject : Symbol("RemoteObject"),
+    RemoteObjectId: Symbol("remoteObjectId"),
+}
 
 class RemoteObj extends Function { // should be callable, otherwise apply won't work
     id:number
@@ -90,8 +94,13 @@ class RemoteObjectTraps {
     }
 
     get(target: RemoteObj, p: string | symbol, receiver: any): any {
-        // can't differentiate between prop access or method call, so first time all props will be represented as methods
-        return new Proxy(new RemoteMethod({obj:target, prop:p}), new RemotePropertyTraps())
+        switch (p) {
+            case MessagingSymbol.RemoteObject: return true; // facilitating remoteObject check
+            case MessagingSymbol.RemoteObjectId: return target.id;
+
+            // can't differentiate between prop access or method call, so first time all props will be represented as methods
+            default: return new Proxy(new RemoteMethod({obj:target, prop:p}), new RemotePropertyTraps())
+        }
     } 
     construct(target: RemoteObj, argArray: any[], newTarget: Function): object {
         // todo: could return an object which refers to the return value of the construct message sent
