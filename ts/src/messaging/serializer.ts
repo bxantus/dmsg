@@ -87,6 +87,10 @@ export class Serializer {
                 } else 
                     this.writeRecord(val)
             } break;
+            case "function": { // functions always exported as handle
+                this.putByte(SerializerTypes.ObjectHandle)
+                this.putUint(this.exportedObjects.getHandle(val))
+            } break;
         }
     }
 

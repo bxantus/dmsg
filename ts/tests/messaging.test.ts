@@ -1,5 +1,5 @@
 import { Serializer, SerializerTypes, Deserializer } from '../src/messaging/serializer.ts'
-import { MessagingConnection } from '../src/messaging/messagingConnection.ts'
+import { MessagingConnection, MessageDirection, MessageType, MessagingSymbol } from '../src/messaging/messagingConnection.ts'
 import { assertEquals } from "https://deno.land/std@0.96.0/testing/asserts.ts";
 import ObjectStore from "../src/messaging/objectStore.ts"
 
@@ -80,4 +80,76 @@ Deno.test("write basic record", ()=> {
     assertEquals(ds.readValue(), 5000.5)
     assertEquals(ds.getString(), "str")
     assertEquals(ds.readValue(), "alma")
+})
+
+class TestTransportWithExpectations {
+    send(message:Uint8Array[]):void {
+        this.sendOperations
+        if (this.sendOperations < this.sendExpectations.length) {
+            this.sendExpectations[this.sendOperations](message[0])
+            ++this.sendOperations
+        } else {
+            throw new Error(`Oversaturated send() call. Expected at most ${this.sendExpectations.length} calls`)
+        }
+    }
+    messageReceiver:((message:Uint8Array) => void)|undefined
+
+    private sendExpectations:((buf:Uint8Array) => any)[] = []
+    private sendOperations:number = 0
+
+    expectOnSend(checker:(buf:Uint8Array) => any) {
+        this.sendExpectations.push(checker)
+    }
+
+    /**
+     * Call it at end of the test case to check that all sendExpectations are processed
+     */
+    verify() {
+        if (this.sendOperations < this.sendExpectations.length) {
+            throw new Error(`Expected at least ${this.sendExpectations.length} of send operations, Only received ${this.sendOperations}`)
+        }
+    }
+}
+
+Deno.test("loadModule simple", async ()=> {
+    const testTransport = new TestTransportWithExpectations()
+    const conn = new MessagingConnection(testTransport)
+    
+    const remoteExportedObjects = new ObjectStore()
+    const onRemoteObject = (handle:number) => { return {remote:true, handle}  }
+    // setup expectations
+    testTransport.expectOnSend(buf => {
+        const ds = new Deserializer(buf, remoteExportedObjects, onRemoteObject)
+        const header = ds.readMessageHeader()
+        assertEquals(header.dir, MessageDirection.Request)
+        assertEquals(header.type, MessageType.LoadModule)
+        assertEquals(header.id, 1)
+        const method = ds.readValue()
+        assertEquals(method, "loadModule")
+        const args = ds.readValue()
+        assertEquals(args, ["test"])
+
+        // simulate some response
+        const s = new Serializer(remoteExportedObjects)
+        s.writeMessageHeader(MessageDirection.Response, MessageType.LoadModule, 1)
+        s.writeValue({ // simple module with some remote objects
+            log(what:string) {
+                console.log("Hello: ", what)
+            },
+            info: {
+                version: 1.0,
+                name: "test"
+            }
+        })
+        testTransport.messageReceiver?.(s.getData()[0])
+    })
+
+    // excecise messaging
+    const testModule = await conn.loadModule("test")
+    // log should be a remote object
+    assertEquals(testModule.log[MessagingSymbol.RemoteObject], true)
+    assertEquals(testModule.log[MessagingSymbol.RemoteObjectId], 0)
+    assertEquals(testModule.info, {version: 1.0, name:"test"})
+
+    testTransport.verify()
 })

@@ -44,8 +44,9 @@ export class MessagingConnection {
         s.writeMessageHeader(MessageDirection.Request, MessageType.LoadModule, ++this.nextMessageId)
         s.writeValue("loadModule")
         s.writeArray([uri])
+        const promisedResponse = this.addRequest(this.nextMessageId)
         this.transport.send(s.getData()) 
-        return this.addRequest(this.nextMessageId)
+        return promisedResponse
     }
 
     async callObject(obj:RemoteObj, argArray: any[]):Promise<any> {
