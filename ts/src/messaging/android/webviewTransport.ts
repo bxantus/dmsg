@@ -1,4 +1,7 @@
-
+import {
+    decode as decodeBase64,
+    encode as encodeBase64,
+  } from "https://deno.land/std@0.97.0/encoding/base64.ts";
 /**
  * Transport layer used to communicate between android app and the browser (javascript)
  * It builds on these two functionalities:
@@ -12,25 +15,52 @@
  *   * to send messages to the webview we can use the `evaluateJavascript()` method on the webview, this accepts the script
  *     only as a string, so serialization should be performed to string as well
  */
-class WebviewTransport {
+
+export interface AndroidInterface {
+    connect(transportId:number):void
+    onMessage(transportId:number, encodedMessage:string):void
+    close(transportId:number):void
+}
+
+export class WebviewTransport {
+    id:number
+    constructor(private androidIntf:AndroidInterface) {
+        this.id = nextTransportId++
+        transports.set(this.id, this)
+    }
+
     messageReceiver:((message:Uint8Array) => void)|undefined = undefined
     send(message:Uint8Array[]) {
-
+        if (message.length == 1) {
+            this.androidIntf.onMessage(this.id, encodeBase64(message[0])) 
+        } else {
+            // todo: concat message chunks in one big array and encode that one
+        }
     }
 
     receive(message:Uint8Array) {
         this.messageReceiver?.(message)
     }
+
+    close() {
+        transports.delete(this.id)
+        this.androidIntf.close(this.id)
+    }
 }
 
+const transports = new Map<number, WebviewTransport>()
+let nextTransportId = 0
 /**
  * This function will be made available in the global scope, for the android code to access
  */
-function webviewMessageReceiver(msg:string) {
-
+export function webviewMessageReceiver(id:number, msg:string) {
+    const transport = transports.get(id)
+    if (!transport)
+        throw new Error(`Transport with id of ${id} already closed`)
+    transport.receive(decodeBase64(msg))
 }
 
-function initializeConnection() {
+export function initializeConnection() {
     // from android, code should call: `window.__receive("base64_encoded_message");`
     (window as any).__receive = webviewMessageReceiver
 }
