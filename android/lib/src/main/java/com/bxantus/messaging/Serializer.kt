@@ -13,8 +13,7 @@ enum class SerializerTypes {
     RemoteObjectHandle,
     Array,
     Object,  // an object consisting of key/value pairs
-    Backref
-    // back reference to an object/array already written in this stream (by idx.)
+    Backref // back reference to an object/array already written in this stream (by idx.)
 }
 
 @ExperimentalUnsignedTypes @ExperimentalStdlibApi
