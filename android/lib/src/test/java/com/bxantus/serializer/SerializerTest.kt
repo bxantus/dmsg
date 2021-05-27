@@ -36,4 +36,21 @@ class SerializerTest {
         assertEquals("alma a fa alatt", des.readValue() )
         assertEquals("Árvíztűrő", des.readValue() )
     }
+
+    @Test
+    fun serializeDataClass() {
+        data class AppleTree(val height:Int, val name:String, val numApples:Int) {
+            private val dog = 10
+        };
+        val myTree = AppleTree(height = 10, name = "Eden", numApples = 100)
+        val serializer = Serializer()
+        serializer.writeValue(myTree)
+        val des = Deserializer(serializer.buffer)
+        assertEquals(SerializerTypes.Object.ordinal, des.getByte())
+        val dict = des.getDictionary()
+        assertEquals(myTree.height, dict["height"])
+        assertEquals(myTree.name, dict["name"])
+        assertEquals(myTree.numApples, dict["numApples"])
+        assertEquals(10, dict["dog"])
+    }
 }

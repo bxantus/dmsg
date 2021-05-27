@@ -48,10 +48,16 @@ class Serializer {
             }
             is Array<*> -> writeArray(value)
             // todo: should decide whether lists will be added as arrays
-            // write data classes as objects
-            value::class.isData -> writeDataObject(value, value::class.java)
             // todo: remote objects
-            // all other objects should be written as handle
+            else -> {
+                // write data classes as objects
+                if (value::class.isData) {
+                    writeDataObject(value, value::class.java)
+                } else {
+                // all other objects should be written as handle
+                }
+            }
+
         }
     }
 
@@ -100,13 +106,14 @@ class Serializer {
         buffer.put(utf8Encoded)
     }
 
-    fun writeDataObject(obj:Any, cls:Class<out Any>) {
+    fun writeDataObject(obj:Any, cls:Class<*>) {
         if (writeIfBackref(obj)) return
         objectsWritten[obj] = objectsWritten.size.toUInt()
         putByte(SerializerTypes.Object.ordinal)
         putUint16(cls.declaredFields.size)
         for (mem in cls.declaredFields) {
             putString(mem.name)
+            mem.isAccessible = true
             writeValue(mem.get(obj))
         }
     }
