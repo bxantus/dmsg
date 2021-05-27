@@ -96,6 +96,7 @@ class Serializer {
     fun putString(s:String) {
         val utf8Encoded = s.encodeToByteArray()
         putUint16(utf8Encoded.size)
+        buffer.position(incOffset(utf8Encoded.size))
         buffer.put(utf8Encoded)
     }
 
@@ -169,7 +170,8 @@ class Deserializer(private val input:ByteBuffer) {
     fun getString():String {
         val len = getUint16()
         val bytesInUtf8 = ByteArray(len)
-        input.get(bytesInUtf8, incOffset(len), len)
+        input.position(incOffset(len))
+        input.get(bytesInUtf8, 0, len)
         return bytesInUtf8.decodeToString()
     }
 
