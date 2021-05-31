@@ -22,12 +22,12 @@ class Serializer(private val objectStore:ObjectStore) {
         const val BUFFER_SIZE = 4096
     }
     // todo: chaining buffers should be implemented to accommodate larger payloads
-    private val buffer:ByteBuffer = ByteBuffer.allocateDirect(BUFFER_SIZE)
+    private val buffer:ByteBuffer = ByteBuffer.allocate(BUFFER_SIZE)
     private var offset = 0
     private val objectsWritten = mutableMapOf<Any, UInt>()
 
     init {
-        buffer.order(ByteOrder.LITTLE_ENDIAN)
+        buffer.order(ByteOrder.BIG_ENDIAN)
     }
 
     /// Use this method to get the underlying buffer to send
@@ -173,7 +173,7 @@ class Deserializer(private val input:ByteBuffer, private val objectStore:ObjectS
     private val objectsRead = mutableListOf<Any?>()
     init {
         // will use the buffer in little endian byte order
-        input.order(ByteOrder.LITTLE_ENDIAN)
+        input.order(ByteOrder.BIG_ENDIAN)
     }
 
     companion object  {
