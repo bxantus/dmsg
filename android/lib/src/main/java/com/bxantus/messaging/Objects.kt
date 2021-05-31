@@ -1,5 +1,6 @@
 package com.bxantus.messaging
 
+@ExperimentalStdlibApi
 class RemoteObject(val handle:UInt, private val conn:MessagingConnection) {
     fun call(vararg args:Any?) {
 
@@ -8,6 +9,12 @@ class RemoteObject(val handle:UInt, private val conn:MessagingConnection) {
     fun callMethod(method:String, vararg args:Any?) {
 
     }
+}
+
+// contents of data objects are serialized as well as data classes
+// derive from this class to serialize contents
+open class DataObject {
+
 }
 
 class ObjectStore {

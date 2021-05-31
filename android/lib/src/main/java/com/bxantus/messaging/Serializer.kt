@@ -22,12 +22,23 @@ class Serializer(private val objectStore:ObjectStore) {
         const val BUFFER_SIZE = 4096
     }
     // todo: chaining buffers should be implemented to accommodate larger payloads
-    val buffer:ByteBuffer = ByteBuffer.allocateDirect(BUFFER_SIZE)
+    private val buffer:ByteBuffer = ByteBuffer.allocateDirect(BUFFER_SIZE)
     private var offset = 0
     private val objectsWritten = mutableMapOf<Any, UInt>()
 
     init {
         buffer.order(ByteOrder.LITTLE_ENDIAN)
+    }
+
+    /// Use this method to get the underlying buffer to send
+    fun getBuffer():ByteBuffer {
+        buffer.limit(offset)
+        return buffer
+    }
+
+    fun writeMessageHeader(dir:MessageDirection, msg:MessageType, messageId:Int) {
+        putByte((dir.ordinal shl 4) or msg.ordinal)
+        putUint(messageId.toUInt())
     }
 
     fun writeValue(value:Any?) {
@@ -51,6 +62,7 @@ class Serializer(private val objectStore:ObjectStore) {
                 putByte(SerializerTypes.RemoteObjectHandle.ordinal)
                 putUint(value.handle)
             }
+            is DataObject -> writeDataObject(value, value::class.java)
             else -> {
                 // write data classes as objects
                 if (value::class.isData) {
@@ -148,6 +160,10 @@ class Serializer(private val objectStore:ObjectStore) {
     }
 }
 
+data class MessageHeader(val dir:MessageDirection, val msg:MessageType, val messageId:Int) {
+
+}
+
 // RemoteObjectFactory returns Any to ease testing, concrete RemoteObject type is not that important here
 typealias RemoteObjectFactory = (handle:UInt) -> Any
 
@@ -158,6 +174,18 @@ class Deserializer(private val input:ByteBuffer, private val objectStore:ObjectS
     init {
         // will use the buffer in little endian byte order
         input.order(ByteOrder.LITTLE_ENDIAN)
+    }
+
+    companion object  {
+        val MsgDirectionVals = MessageDirection.values()
+        val MsgTypeVals = MessageType.values()
+    }
+
+    fun readMessageHeader():MessageHeader {
+        val dirAndType = getByte()
+        val id = getInt()
+
+        return MessageHeader( MsgDirectionVals[dirAndType shr 4], MsgTypeVals[dirAndType and 0xF], id)
     }
 
     fun readValue():Any? =
