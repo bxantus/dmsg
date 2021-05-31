@@ -84,7 +84,6 @@ Deno.test("write basic record", ()=> {
 
 class TestTransportWithExpectations {
     send(message:Uint8Array[]):void {
-        this.sendOperations
         if (this.sendOperations < this.sendExpectations.length) {
             this.sendExpectations[this.sendOperations](message[0])
             ++this.sendOperations
@@ -205,5 +204,61 @@ Deno.test("remotecall object simple", async ()=> {
     const testModule = await conn.loadModule("test")
     const lenMydog = await testModule.log("my dog")
     assertEquals(lenMydog, 6)
+    testTransport.verify()
+})
+
+Deno.test("remotecall object method", async ()=> {
+    // NOTE: for sake of easier understanding this test contains heavy copy paste from the previous loadModule one
+    const testTransport = new TestTransportWithExpectations()
+    const conn = new MessagingConnection(testTransport)
+    
+    const remoteExportedObjects = new ObjectStore()
+    const onRemoteObject = (handle:number) => { return {remote:true, handle}  }
+    class Logger {
+        log(what:string) {
+            return `Logging: ${what}`
+        }
+    }
+    // setup expectations
+    const testModuleSpec = { 
+        logger: new Logger,
+        info: {
+            version: 2.0,
+            name: "test"
+        }
+    }
+    testTransport.expectOnSend(buf => { // loadModule
+        // simulate some response
+        const s = new Serializer(remoteExportedObjects)
+        s.writeMessageHeader(MessageDirection.Response, MessageType.LoadModule, 1)
+        s.writeValue(testModuleSpec)
+        assertEquals(remoteExportedObjects.getObject(0), testModuleSpec.logger) // logger should be exported
+        testTransport.messageReceiver?.(s.getData()[0])
+    })
+    testTransport.expectOnSend(buf => { // calling logger.log("I can log")
+        const ds = new Deserializer(buf, remoteExportedObjects, onRemoteObject)
+        const header = ds.readMessageHeader()
+        assertEquals(header.dir, MessageDirection.Request)
+        assertEquals(header.type, MessageType.Call)
+        assertEquals(header.id, 2)
+
+        const obj = ds.readValue()
+        const method = ds.readValue()
+        const args = ds.readValue()
+
+        assertEquals(obj, remoteExportedObjects.getObject(0))
+        assertEquals(method, "log")
+        assertEquals(args, ["I can log!"])
+        
+        const s = new Serializer(remoteExportedObjects)
+        s.writeMessageHeader(MessageDirection.Response, MessageType.Call, 2)
+        s.writeValue(obj[method].apply(obj, args)) // this should call log
+        testTransport.messageReceiver?.(s.getData()[0])
+    })
+
+    // excecise messaging
+    const testModule = await conn.loadModule("test")
+    const logMsg = await testModule.logger.log("I can log!")
+    assertEquals(logMsg, "Logging: I can log!")
     testTransport.verify()
 })

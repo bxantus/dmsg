@@ -66,7 +66,7 @@ export class MessagingConnection {
         const s = new Serializer(this.exportedObjects)
         s.writeMessageHeader(MessageDirection.Request, MessageType.Call, ++this.nextMessageId)
         s.writeValue(method.obj)       // should be written as remote obj
-        s.writeValue(method.name) 
+        s.writeValue(method.prop) 
         s.writeArray(argArray)
 
         const promisedResponse = this.addRequest(this.nextMessageId)
