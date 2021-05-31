@@ -43,7 +43,7 @@ class Serializer(private val objectStore:ObjectStore) {
 
     fun writeValue(value:Any?) {
         when(value) {
-            null -> putByte(SerializerTypes.Undef.ordinal);
+            null, Unit -> putByte(SerializerTypes.Undef.ordinal);
             is Boolean -> {
                 putByte(SerializerTypes.Bool.ordinal);
                 putByte(if (value) 1 else 0)
