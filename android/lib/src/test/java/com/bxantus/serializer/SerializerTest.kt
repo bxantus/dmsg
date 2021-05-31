@@ -12,12 +12,15 @@ import com.bxantus.messaging.*
  */
 @ExperimentalStdlibApi
 class SerializerTest {
+    val dummyRemoteObjectFactory = fun (_:UInt) = "Remote"
+
     @Test
     fun serializeBasicTypes() {
-        val serializer = Serializer()
+        val objStore = ObjectStore()
+        val serializer = Serializer(objStore)
         serializer.writeValue(101) // written as Int
         serializer.writeValue(20.5) // written as Double
-        val des = Deserializer(serializer.buffer)
+        val des = Deserializer(serializer.buffer, objStore, dummyRemoteObjectFactory)
         assertEquals(des.getByte(), SerializerTypes.Int.ordinal)
         assertEquals(des.getInt(), 101)
         assertEquals(des.getByte(), SerializerTypes.Double.ordinal)
@@ -26,13 +29,14 @@ class SerializerTest {
 
     @Test
     fun serializeString() {
-        val serializer = Serializer()
+        val objStore = ObjectStore()
+        val serializer = Serializer(objStore)
         serializer.writeValue("alma a fa alatt")
         serializer.writeValue("Árvíztűrő") // check utf8 encoding
-        val desLenChecker = Deserializer(serializer.buffer)
+        val desLenChecker = Deserializer(serializer.buffer, objStore, dummyRemoteObjectFactory)
         assertEquals(SerializerTypes.String.ordinal, desLenChecker.getByte() )
         assertEquals(15, desLenChecker.getUint16()) // len
-        val des = Deserializer(serializer.buffer)
+        val des = Deserializer(serializer.buffer, objStore, dummyRemoteObjectFactory)
         assertEquals("alma a fa alatt", des.readValue() )
         assertEquals("Árvíztűrő", des.readValue() )
     }
@@ -43,9 +47,10 @@ class SerializerTest {
             private val dog = 10
         };
         val myTree = AppleTree(height = 10, name = "Eden", numApples = 100)
-        val serializer = Serializer()
+        val objStore = ObjectStore()
+        val serializer = Serializer(objStore)
         serializer.writeValue(myTree)
-        val des = Deserializer(serializer.buffer)
+        val des = Deserializer(serializer.buffer, objStore, dummyRemoteObjectFactory)
         assertEquals(SerializerTypes.Object.ordinal, des.getByte())
         val dict = des.getDictionary()
         assertEquals(myTree.height, dict["height"])

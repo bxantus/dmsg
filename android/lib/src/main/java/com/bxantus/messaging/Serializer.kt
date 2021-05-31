@@ -17,7 +17,7 @@ enum class SerializerTypes {
 }
 
 @ExperimentalUnsignedTypes @ExperimentalStdlibApi
-class Serializer {
+class Serializer(private val objectStore:ObjectStore) {
     companion object {
         const val BUFFER_SIZE = 4096
     }
@@ -47,13 +47,18 @@ class Serializer {
             }
             is Array<*> -> writeArray(value)
             // todo: should decide whether lists will be added as arrays
-            // todo: remote objects
+            is RemoteObject -> {
+                putByte(SerializerTypes.RemoteObjectHandle.ordinal)
+                putUint(value.handle)
+            }
             else -> {
                 // write data classes as objects
                 if (value::class.isData) {
                     writeDataObject(value, value::class.java)
                 } else {
-                // all other objects should be written as handle
+                    // all other objects should be written as handle
+                    putByte(SerializerTypes.ObjectHandle.ordinal)
+                    putUint(objectStore.getHandle(value))
                 }
             }
 
@@ -143,8 +148,11 @@ class Serializer {
     }
 }
 
+// RemoteObjectFactory returns Any to ease testing, concrete RemoteObject type is not that important here
+typealias RemoteObjectFactory = (handle:UInt) -> Any
+
 @ExperimentalUnsignedTypes @ExperimentalStdlibApi // needed for decodeToString call
-class Deserializer(private val input:ByteBuffer) {
+class Deserializer(private val input:ByteBuffer, private val objectStore:ObjectStore, private val remoteObjectFactory: RemoteObjectFactory) {
     private var offset = 0
     private val objectsRead = mutableListOf<Any?>()
     init {
@@ -161,6 +169,9 @@ class Deserializer(private val input:ByteBuffer) {
             SerializerTypes.String.ordinal -> getString()
             SerializerTypes.Array.ordinal -> getArray()
             SerializerTypes.Object.ordinal -> getDictionary()
+            // remote object from the other side's point of view, this is one of our exported objects
+            SerializerTypes.RemoteObjectHandle.ordinal -> objectStore.getObject(getUint())
+            SerializerTypes.ObjectHandle.ordinal -> remoteObjectFactory(getUint())
             SerializerTypes.Backref.ordinal -> objectsRead[getInt()]
             else -> null
         }
