@@ -22,12 +22,14 @@ enum class MessageType {
 }
 
 @ExperimentalStdlibApi
-class MessagingConnection(private val transport:Transport) {
+class MessagingConnection(private val transport:Transport, modules:Map<String, Module>? = null) {
     private val exportedObjects = ObjectStore()
     private val exportedModules = mutableMapOf<String, Module>()
 
     init {
         transport.messageReceiver = this::onMessageReceived // creates a bound function, with receiver
+        if (modules != null)
+            exportedModules.putAll(modules)
     }
 
     fun loadModule(uri:String) {
