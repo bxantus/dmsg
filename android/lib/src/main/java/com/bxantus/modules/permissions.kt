@@ -7,7 +7,7 @@ import com.bxantus.messaging.DataObject
 import com.bxantus.messaging.Module
 import kotlinx.coroutines.*
 
-class Permissions(webActivity: WebActivity) : Module() {
+class PermissionsModule(webActivity: WebActivity) : Module() {
     val permissions = object : DataObject() {
         // NOTE: not all dangerous permissions are listed yet
         val accessBackgroundLocation = Manifest.permission.ACCESS_BACKGROUND_LOCATION

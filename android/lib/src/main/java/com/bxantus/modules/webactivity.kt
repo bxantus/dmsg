@@ -6,7 +6,7 @@ typealias PermissionHandler = (requestCode: Int,
                                permissions: Array<out String>,
                                grantResults: IntArray) -> Unit
 
-class WebActivity : Activity() {
+open class WebActivity : Activity() {
     private val permissionHandlers = mutableListOf<PermissionHandler>()
     fun addPermissionHandler(handler:PermissionHandler) {
         permissionHandlers.add(handler)
