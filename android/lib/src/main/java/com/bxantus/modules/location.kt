@@ -30,4 +30,9 @@ class LocationProvider(private val webActivity: WebActivity) {
             else -> Location(loc)
         }
     }
+
+    // todo: add requestUpdates function
+    //       this will receive a remote object as argument (function from the other side)
+    //       it should be called whenever a new location update is ready
+    //       also there should be a way to cancel location updates
 }
