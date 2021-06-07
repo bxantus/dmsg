@@ -62,6 +62,18 @@ class SerializerTest {
     }
 
     @Test
+    fun checkObjectStore() {
+        data class Obj(val name:String)
+        val objects = ObjectStore()
+        val h1 = objects.getHandle(Obj("dog"))
+        val h2 = objects.getHandle(Obj("apple"))
+        assertEquals(0u, h1)
+        assertEquals(1u, h2)
+        assertEquals("apple", (objects.getObject(h2) as Obj).name)
+        assertEquals("dog", (objects.getObject(h1) as Obj).name)
+    }
+
+    @Test
     fun reflectCallTest() {
         class Adder(val base:Int) {
             fun add(a:Int, b:Int) = base + a + b

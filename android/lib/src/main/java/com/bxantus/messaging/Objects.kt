@@ -28,7 +28,7 @@ class ObjectStore {
         handles.getOrPut(obj) {
             val handle = handles.size.toUInt()
             objectsByHandle[handle] = obj
-            return handle
+            handle
         }
 
     fun getObject(handle:UInt) = objectsByHandle[handle]
