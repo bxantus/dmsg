@@ -262,3 +262,92 @@ Deno.test("remotecall object method", async ()=> {
     assertEquals(logMsg, "Logging: I can log!")
     testTransport.verify()
 })
+
+Deno.test("receive remote obj call", ()=> {
+    const testTransport = new TestTransportWithExpectations()
+    const conn = new MessagingConnection(testTransport)
+    
+    const remoteExportedObjects = new ObjectStore()
+    const onRemoteObject = (handle:number) => { return {remote:true, handle}  }
+
+    const exportedObjects:ObjectStore = (conn as any).exportedObjects // trick to access private prop of conn
+    const ch = exportedObjects.getHandle((a:number, b:number) => a*b) // will export this callable object with handle of 0
+    assertEquals(ch, 0)
+
+    testTransport.expectOnSend(buf => { // response to our callable, with 100 * 10 = 1000
+        const des = new Deserializer(buf, remoteExportedObjects, onRemoteObject)
+        const header = des.readMessageHeader()
+        assertEquals(header.dir, MessageDirection.Response)
+        assertEquals(header.type, MessageType.Call)
+        assertEquals(header.id, 1)
+
+        const res = des.readValue()
+        assertEquals(res, 1000)
+    })
+    // test --------------
+    // send a remote obj request
+    const reqSer = new Serializer(remoteExportedObjects) // request serializer
+    reqSer.writeMessageHeader(MessageDirection.Request, MessageType.Call, 1)
+    reqSer.putByte(SerializerTypes.RemoteObjectHandle);reqSer.putUint(0) // remote obj with id 0
+    reqSer.writeValue(undefined) // method
+    reqSer.writeValue([100, 10]) // args
+    testTransport.messageReceiver?.(reqSer.getData()[0])
+
+    testTransport.verify()
+})
+
+Deno.test("receive remote obj method call", ()=> {
+    const testTransport = new TestTransportWithExpectations()
+    const conn = new MessagingConnection(testTransport)
+    
+    const remoteExportedObjects = new ObjectStore()
+    const onRemoteObject = (handle:number) => { return {remote:true, handle}  }
+
+    const exportedObjects:ObjectStore = (conn as any).exportedObjects // trick to access private prop of conn
+    class Calc {
+        add(a:number, b:number) { return a + b }
+        sub(a:number, b:number) { return a - b }
+    }
+    const calcHandle = exportedObjects.getHandle(new Calc()) // will export this calc object with handle of 0
+    assertEquals(calcHandle, 0)
+
+    testTransport.expectOnSend(buf => { // response to our calc add, with 100 + 10 = 110
+        const des = new Deserializer(buf, remoteExportedObjects, onRemoteObject)
+        const header = des.readMessageHeader()
+        assertEquals(header.dir, MessageDirection.Response)
+        assertEquals(header.type, MessageType.Call)
+        assertEquals(header.id, 1)
+
+        const res = des.readValue()
+        assertEquals(res, 110)
+    })
+
+    testTransport.expectOnSend(buf => { // response to our calc sub, with 10 - 100 = -90
+        const des = new Deserializer(buf, remoteExportedObjects, onRemoteObject)
+        const header = des.readMessageHeader()
+        assertEquals(header.dir, MessageDirection.Response)
+        assertEquals(header.type, MessageType.Call)
+        assertEquals(header.id, 2)
+
+        const res = des.readValue()
+        assertEquals(res, -90)
+    })
+    // test --------------
+    // send remote.add(100, 10)
+    const addSer = new Serializer(remoteExportedObjects) 
+    addSer.writeMessageHeader(MessageDirection.Request, MessageType.Call, 1)
+    addSer.putByte(SerializerTypes.RemoteObjectHandle);addSer.putUint(0) // remote obj with id 0
+    addSer.writeValue("add") // method
+    addSer.writeValue([100, 10]) // args
+    testTransport.messageReceiver?.(addSer.getData()[0])
+
+    // send remote.sub(10, 100)
+    const subSer = new Serializer(remoteExportedObjects) 
+    subSer.writeMessageHeader(MessageDirection.Request, MessageType.Call, 2)
+    subSer.putByte(SerializerTypes.RemoteObjectHandle);subSer.putUint(0) // remote obj with id 0
+    subSer.writeValue("sub") // method
+    subSer.writeValue([10, 100]) // args
+    testTransport.messageReceiver?.(subSer.getData()[0])
+
+    testTransport.verify()
+})

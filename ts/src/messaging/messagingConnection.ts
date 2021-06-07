@@ -91,8 +91,25 @@ export class MessagingConnection {
                 request(ds.readValue()) // call result should be encoded in a single value as well
             }
         } else { 
-            // todo: a request for us to process
-            //       it needs at least a module registry or something similar to answer loadModule requests
+            // a request for us to process
+            if (header.type == MessageType.Call) {
+                const obj = ds.readValue()
+                const method = ds.readValue()
+                const args = ds.readValue()
+                let res:any
+                // todo: maybe we should check for exception during call and report error, and send some kind of response
+                //       otherwise communication may hang
+                if (method)
+                    res = obj[method].apply(obj, args)
+                else res = obj.apply(obj, args)
+
+                const s = new Serializer(this.exportedObjects)
+                s.writeMessageHeader(MessageDirection.Response, MessageType.Call, header.id)
+                s.writeValue(res)
+                this.transport.send(s.getData())                
+            } else {
+                // todo: it needs at least a module registry or something similar to answer loadModule requests
+            }
         }
     }
 
