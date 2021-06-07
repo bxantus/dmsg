@@ -3,15 +3,15 @@ package com.bxantus.messaging
 import org.junit.Test
 
 import org.junit.Assert.*
-import com.bxantus.messaging.*
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.TestCoroutineScope
-import kotlinx.coroutines.test.runBlockingTest
 import java.lang.RuntimeException
 import java.nio.ByteBuffer
 
+// todo: should split tests in different test suites
+//       currently serializer, and messaging tests are in the same suite, together with objectStore related tests
+//       at least the package could be changed to messaging and the suite name as well
 @ExperimentalStdlibApi
 class SerializerTest {
     val dummyRemoteObjectFactory = fun (_:UInt) = "Remote"
@@ -212,6 +212,109 @@ class SerializerTest {
         testTransport.messageReceiver(s2.getBuffer())
 
         scope.advanceUntilIdle() // completes all suspended coroutines
+        testTransport.verify()
+    }
+
+    @Test
+    fun testCallRemoteObject() {
+        // Setup
+        val objectStore = ObjectStore() // responder will store his exported objects here
+        val testTransport = TestTransport()
+
+        data class DummyRemote(val name:String)
+        val myCallable = DummyRemote("dummy")
+        assertEquals(0u, objectStore.getHandle(myCallable))
+
+        // Expect a request to our remote object call, with args (100, 10)
+        testTransport.willSend { buf ->
+            val des = Deserializer(buf, objectStore){handle -> SimpleRemoteObject(handle)}
+            val header = des.readMessageHeader()
+            assertEquals(header.dir, MessageDirection.Request)
+            assertEquals(header.msg, MessageType.Call)
+            assertEquals(header.messageId, 1)
+
+            val obj = des.readValue()
+            val method = des.readValue()
+            val args = des.readValue()
+            assertEquals(myCallable, obj)
+            assertEquals(null, method)
+            assertArrayEquals(arrayOf(100, 10), args as Array<*>);
+            // send return value
+            val ser = Serializer(objectStore)
+            ser.writeMessageHeader(MessageDirection.Response, MessageType.Call, 1)
+            ser.writeValue(100 * 10)
+            testTransport.messageReceiver(ser.getBuffer())
+        }
+
+        // Trigger call of dummy remote object
+        val conn = MessagingConnection(testTransport, MainScope())
+        val remoteForMyCallable = RemoteObject(0u, conn)
+        val res = remoteForMyCallable.callAsync(100, 10).getCompleted()
+        assertEquals(1000, res)
+
+        testTransport.verify()
+    }
+
+    @Test
+    fun testCallRemoteObjectMethod() {
+        // Setup
+        val objectStore = ObjectStore() // responder will store his exported objects here
+        val testTransport = TestTransport()
+
+        data class DummyRemoteCalculator(val name:String)
+        val myCallable = DummyRemoteCalculator("dummy")
+        assertEquals(0u, objectStore.getHandle(myCallable))
+
+        // Expect a request to our remote object add, with args (100, 10)
+        testTransport.willSend { buf ->
+            val des = Deserializer(buf, objectStore){handle -> SimpleRemoteObject(handle)}
+            val header = des.readMessageHeader()
+            assertEquals(header.dir, MessageDirection.Request)
+            assertEquals(header.msg, MessageType.Call)
+            assertEquals(header.messageId, 1)
+
+            val obj = des.readValue()
+            val method = des.readValue()
+            val args = des.readValue()
+            assertEquals(myCallable, obj)
+            assertEquals("add", method)
+            assertArrayEquals(arrayOf(100, 10), args as Array<*>);
+            // send return value
+            val ser = Serializer(objectStore)
+            ser.writeMessageHeader(MessageDirection.Response, MessageType.Call, 1)
+            ser.writeValue(100 + 10)
+            testTransport.messageReceiver(ser.getBuffer())
+        }
+
+        // Expect a request to our remote object sub, with args (10, 100)
+        testTransport.willSend { buf ->
+            val des = Deserializer(buf, objectStore){handle -> SimpleRemoteObject(handle)}
+            val header = des.readMessageHeader()
+            assertEquals(header.dir, MessageDirection.Request)
+            assertEquals(header.msg, MessageType.Call)
+            assertEquals(header.messageId, 2)
+
+            val obj = des.readValue()
+            val method = des.readValue()
+            val args = des.readValue()
+            assertEquals(myCallable, obj)
+            assertEquals("sub", method)
+            assertArrayEquals(arrayOf(10, 100), args as Array<*>);
+            // send return value
+            val ser = Serializer(objectStore)
+            ser.writeMessageHeader(MessageDirection.Response, MessageType.Call, 2)
+            ser.writeValue(10 - 100)
+            testTransport.messageReceiver(ser.getBuffer())
+        }
+
+        // Trigger call of dummy remote calculator methods
+        val conn = MessagingConnection(testTransport, MainScope())
+        val remoteForMyCalculator = RemoteObject(0u, conn)
+        val addRes = remoteForMyCalculator.callMethodAsync("add",100, 10).getCompleted()
+        assertEquals(110, addRes)
+        val subRes = remoteForMyCalculator.callMethodAsync("sub",10, 100).getCompleted()
+        assertEquals(-90, subRes)
+
         testTransport.verify()
     }
 }

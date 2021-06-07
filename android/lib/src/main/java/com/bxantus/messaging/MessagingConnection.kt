@@ -1,6 +1,8 @@
 package com.bxantus.messaging
 
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.launch
 import java.nio.ByteBuffer
 import kotlin.reflect.full.callSuspend
@@ -28,6 +30,8 @@ enum class MessageType {
 class MessagingConnection(private val transport:Transport, private val coScope:CoroutineScope, modules:Map<String, Module>? = null) {
     private val exportedObjects = ObjectStore()
     private val exportedModules = mutableMapOf<String, Module>()
+    private var nextMessageId = 0
+    private val requests = mutableMapOf<Int, CompletableDeferred<Any?>>()
 
     init {
         transport.messageReceiver = this::onMessageReceived // creates a bound function, with receiver
@@ -39,12 +43,28 @@ class MessagingConnection(private val transport:Transport, private val coScope:C
 
     }
 
-    fun callObject() {
-
+    fun callObjectAsync(obj:RemoteObject, vararg args:Any?):Deferred<Any?> {
+        val ser = Serializer(exportedObjects)
+        ser.writeMessageHeader(MessageDirection.Request, MessageType.Call, ++nextMessageId)
+        ser.writeValue(obj)
+        ser.writeValue(null) // method
+        ser.writeValue(args)
+        val result = CompletableDeferred<Any?>()
+        requests[nextMessageId] = result
+        transport.send(ser.getBuffer())
+        return result
     }
 
-    fun callObjectMethod() {
-
+    fun callObjectMethodAsync(obj:RemoteObject, method:String, vararg args:Any?):Deferred<Any?> {
+        val ser = Serializer(exportedObjects)
+        ser.writeMessageHeader(MessageDirection.Request, MessageType.Call, ++nextMessageId)
+        ser.writeValue(obj)
+        ser.writeValue(method)
+        ser.writeValue(args)
+        val result = CompletableDeferred<Any?>()
+        requests[nextMessageId] = result
+        transport.send(ser.getBuffer())
+        return result
     }
 
     fun serveModule(uri:String, mod:Module) {
@@ -99,6 +119,11 @@ class MessagingConnection(private val transport:Transport, private val coScope:C
     }
 
     private fun processResponse(des:Deserializer, msg:MessageType, messageId:Int) {
-
+        when (msg) {
+            MessageType.Call -> {
+                val request = requests.remove(messageId)
+                request?.complete(des.readValue())
+            }
+        }
     }
 }

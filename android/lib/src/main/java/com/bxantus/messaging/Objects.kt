@@ -2,13 +2,10 @@ package com.bxantus.messaging
 
 @ExperimentalStdlibApi
 class RemoteObject(val handle:UInt, private val conn:MessagingConnection) {
-    fun call(vararg args:Any?) {
-
-    }
-
-    fun callMethod(method:String, vararg args:Any?) {
-
-    }
+    fun callAsync(vararg args:Any?) = conn.callObjectAsync(this, *args)
+    suspend fun call(vararg args:Any?) = conn.callObjectAsync(this, *args).await()
+    fun callMethodAsync(method:String, vararg args:Any?) = conn.callObjectMethodAsync(this, method, *args)
+    suspend fun callMethod(method:String, vararg args:Any?) = conn.callObjectMethodAsync(this, method, *args).await()
 }
 
 // contents of data objects are serialized as well as data classes
