@@ -4,6 +4,11 @@ import org.junit.Test
 
 import org.junit.Assert.*
 import com.bxantus.messaging.*
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.TestCoroutineScope
+import kotlinx.coroutines.test.runBlockingTest
 import java.lang.RuntimeException
 import java.nio.ByteBuffer
 
@@ -73,7 +78,7 @@ class SerializerTest {
     fun loadModule() {
         // Setup
         val testTransport = TestTransport()
-        val conn = MessagingConnection(testTransport)
+        val conn = MessagingConnection(testTransport, MainScope())
         val objectStore = ObjectStore() // requester will store his exported objects here
         class Logger {
             fun log(message:String) {}
@@ -108,7 +113,7 @@ class SerializerTest {
     fun callMethodFromExportedObject() {
         // Setup
         val testTransport = TestTransport()
-        val conn = MessagingConnection(testTransport)
+        val conn = MessagingConnection(testTransport, MainScope())
         val objectStore = ObjectStore() // requester will store his exported objects here
         class Logger {
             fun log(message:String) = "Logged: $message"
@@ -146,6 +151,55 @@ class SerializerTest {
         s2.writeValue(arrayOf("Hello messaging!"))  // args
         testTransport.messageReceiver(s2.getBuffer())
 
+        testTransport.verify()
+    }
+
+    @Test
+    fun testSuspendedCall() {
+        val scope = TestCoroutineScope()
+        // Setup
+        val testTransport = TestTransport()
+        val conn = MessagingConnection(testTransport, scope)
+        val objectStore = ObjectStore() // requester will store his exported objects here
+        class Adder {
+            suspend fun add(a:Int, b:Int, c:Int):Int {
+                val ab = a+b;
+                delay(500);
+                return ab + c
+            }
+        }
+        conn.serveModule("test://test", object : Module() {
+            val adder = Adder()
+        })
+        // Expect a loadModule request
+        testTransport.willSend {   } // check skipped, see loadmodule test
+        // Expect response to our add method call
+        testTransport.willSend { buf ->
+            val des = Deserializer(buf, objectStore){handle -> SimpleRemoteObject(handle)}
+            val header = des.readMessageHeader()
+            assertEquals(header.dir, MessageDirection.Response)
+            assertEquals(header.msg, MessageType.Call)
+            assertEquals(header.messageId, 2)
+
+            val retval = des.readValue()
+            assertEquals(9, retval)
+        }
+        // Trigger a loadModule request
+        val ser = Serializer(objectStore)
+        ser.writeMessageHeader(MessageDirection.Request, MessageType.LoadModule, 1)
+        ser.writeValue("loadModule")
+        ser.writeValue(arrayOf("test://test"))
+        testTransport.messageReceiver(ser.getBuffer())
+
+        // Trigger call of add(2, 3, 4) method
+        val s2 = Serializer(objectStore)
+        s2.writeMessageHeader(MessageDirection.Request, MessageType.Call, 2)
+        s2.writeValue(RemoteObject(0u, conn)) // object: adder was exported as object with handle 0
+        s2.writeValue("add") // method
+        s2.writeValue(arrayOf(2, 3, 4))  // args
+        testTransport.messageReceiver(s2.getBuffer())
+
+        scope.advanceUntilIdle() // completes all suspended coroutines
         testTransport.verify()
     }
 }

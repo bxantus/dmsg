@@ -8,6 +8,7 @@ import android.util.Base64
 import android.webkit.JavascriptInterface
 import com.bxantus.messaging.MessagingConnection
 import com.bxantus.messaging.Module
+import kotlinx.coroutines.MainScope
 
 /**
  * Methods of this class will be called from the JS code.
@@ -37,7 +38,7 @@ class MessagingInterface(val webView:WebView) {
         } else {
             val trans = WebViewTransport(transportId, webView)
             // create a new messaging connection, and set it up with a list of modules
-            val conn = MessagingConnection(trans, exportedModules)
+            val conn = MessagingConnection(trans, MainScope() , exportedModules)
             activeConnections[transportId] = ConnectionAndTransport(conn, trans)
         }
     }

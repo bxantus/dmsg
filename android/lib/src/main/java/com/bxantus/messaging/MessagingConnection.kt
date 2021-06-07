@@ -1,6 +1,9 @@
 package com.bxantus.messaging
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import java.nio.ByteBuffer
+import kotlin.reflect.full.callSuspend
 
 interface Transport {
     fun send(buf:ByteBuffer)
@@ -22,7 +25,7 @@ enum class MessageType {
 }
 
 @ExperimentalStdlibApi
-class MessagingConnection(private val transport:Transport, modules:Map<String, Module>? = null) {
+class MessagingConnection(private val transport:Transport, private val coScope:CoroutineScope, modules:Map<String, Module>? = null) {
     private val exportedObjects = ObjectStore()
     private val exportedModules = mutableMapOf<String, Module>()
 
@@ -74,12 +77,22 @@ class MessagingConnection(private val transport:Transport, modules:Map<String, M
                 val args = des.readValue()
                 // todo: should check for any exceptions during the call, and answer the request accordingly
                 if (obj is Any && method is String) {
-                    val res = obj::class.members.find { it.name == method }
-                        ?.call(obj, *args as Array<out Any?>)
-                    val ser = Serializer(exportedObjects)
-                    ser.writeMessageHeader(MessageDirection.Response, msg, messageId)
-                    ser.writeValue(res)
-                    transport.send(ser.getBuffer())
+                    val member = obj::class.members.find { it.name == method } ?: return
+                    fun sendCallResponse(res:Any?) {
+                        val ser = Serializer(exportedObjects)
+                        ser.writeMessageHeader(MessageDirection.Response, msg, messageId)
+                        ser.writeValue(res)
+                        transport.send(ser.getBuffer())
+                    }
+                    if (member.isSuspend) {
+                        coScope.launch {
+                            val res = member.callSuspend(obj, *args as Array<out Any?>)
+                            sendCallResponse(res)
+                        }
+                    } else {
+                        val res = member.call(obj, *args as Array<out Any?>)
+                        sendCallResponse(res)
+                    }
                 }
             }
         }
