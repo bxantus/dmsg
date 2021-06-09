@@ -1,6 +1,8 @@
 package com.bxantus.modules
 
 import android.app.Activity
+import android.content.Intent
+import android.util.Log
 
 typealias PermissionHandler = (requestCode: Int,
                                permissions: Array<out String>,
@@ -22,5 +24,10 @@ open class WebActivity : Activity() {
         for (handler in permissionHandlers) {
             handler(requestCode, permissions, grantResults);
         }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        Log.i("webActivity", "onActivityResult, reqCode: $requestCode, result: $resultCode")
     }
 }
