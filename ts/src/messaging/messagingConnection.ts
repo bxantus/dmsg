@@ -164,6 +164,9 @@ class RemoteObjectTraps {
         switch (p) {
             case MessagingSymbol.RemoteObject: return true; // facilitating remoteObject check
             case MessagingSymbol.RemoteObjectId: return target.id;
+            // promise resolvers will query `then` property for proper promise chaining
+            // this prohibits remote objects having a then method
+            case "then": return undefined 
 
             // can't differentiate between prop access or method call, so first time all props will be represented as methods
             default: return new Proxy(new RemoteMethod({obj:target, prop:p}), new RemotePropertyTraps())

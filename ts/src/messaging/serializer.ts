@@ -74,11 +74,7 @@ export class Serializer {
                 this.putString(val)
             } break;
             case "object": {
-                // detect remote object handles
-                if (val[MessagingSymbol.RemoteObject]) {
-                    this.putByte(SerializerTypes.RemoteObjectHandle)
-                    this.putUint(val[MessagingSymbol.RemoteObjectId])
-                } else if (val instanceof Array) 
+                if (val instanceof Array) 
                     this.writeArray(val)
                 else if (val.constructor.name != "Object") {
                     // some kind of an object, different from a plain obj. literal
@@ -88,7 +84,11 @@ export class Serializer {
                     this.writeRecord(val)
             } break;
             case "function": { // functions always exported as handle
-                if (val instanceof RemoteObj) {
+                // detect remote object handle proxys
+                if (val[MessagingSymbol.RemoteObject]) {
+                    this.putByte(SerializerTypes.RemoteObjectHandle)
+                    this.putUint(val[MessagingSymbol.RemoteObjectId])
+                } else if (val instanceof RemoteObj) {
                     this.putByte(SerializerTypes.RemoteObjectHandle)
                     this.putUint(val.id)
                 } else {
