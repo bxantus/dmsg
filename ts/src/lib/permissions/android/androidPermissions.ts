@@ -1,3 +1,5 @@
+import { IPermissionManager, Permission } from '../permissionManager.ts'
+
 export interface PermissionsModule {
     permissions : {
         // NOTE: not all dangerous permissions are listed yet
@@ -5,10 +7,10 @@ export interface PermissionsModule {
         accessCoarseLocation:string
         accessFineLocation:string
     }
-    permissionManager:PermissionManager
+    permissionManager:AndroidPermissionManager
 }
-// data class CheckResult(val granted:Boolean, val shouldShowRationale:Boolean)
-export interface PermissionManager {
+
+export interface AndroidPermissionManager {
     /**
      * Check if a given runtime permission is granted to the app 
      * 
@@ -21,4 +23,23 @@ export interface PermissionManager {
      * Will return whether the permission was granted, or it was denied (or the dialog cancelled)
      */
     request(permission:string):Promise<boolean>
+}
+
+/// Implementation of IPermissionManager for Android
+export class PermissionManager implements IPermissionManager {
+    private permissionMap = new Map<Permission, string>()
+    constructor(private module:PermissionsModule) {
+        this.permissionMap.set("locationAccessFine", module.permissions.accessFineLocation)
+        this.permissionMap.set("locationAccessBackground", module.permissions.accessBackgroundLocation)
+    }
+
+    async check(permission:Permission) {
+        const androidName = this.permissionMap.get(permission)
+        return androidName ? this.module.permissionManager.check(androidName) : {granted:false, shouldShowRationale:false}
+    }
+
+    async request(permission:Permission) {
+        const androidName = this.permissionMap.get(permission)
+        return androidName ? this.module.permissionManager.request(androidName) : false
+    }
 }
