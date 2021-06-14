@@ -1,8 +1,12 @@
-// todo: currently duplicated here and in places.ts
-// probably should bring places closer
+// todo: use this interface in places.ts too
 export interface Location {
-    lat:number
-    lon:number
+    longitude:number
+    latitude:number
+    // when any of the below fields equal 0, means that they aren't available
+    altitude?:number
+    bearing?:number
+    accuracy?:number
+    speed?:number
 }
 
 export interface LocationService {
