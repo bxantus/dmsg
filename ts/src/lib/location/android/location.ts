@@ -6,7 +6,7 @@ export interface LocationModule {
 }
 
 export interface AndroidLocationProvider {
-    getLastLocation():Promise<Location>
+    getLastLocation():Promise<Location|undefined>
     createLocationRequest(interval:number):Promise<RemoteObj>
     /// checks whether settings are enabled for this kind of location request
     /// if not it will try to show system popup which will enable location

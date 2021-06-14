@@ -25,7 +25,7 @@ export interface LocationUpdateRequest {
 export type LocationUpdateListener = (loc:Location)=>void
 
 export interface ILocationProvider {
-    getLastLocation():Promise<Location>
+    getLastLocation():Promise<Location|undefined>
     /// checks whether settings are enabled for this kind of location request
     /// if not it will try to show system popup which will enable location
     // NOTE: should check if iOS has something similar
