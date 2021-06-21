@@ -9,6 +9,12 @@ export interface Location {
     speed?:number
 }
 
+/// creates a new location from the given source
+export function locationFrom(src:Location):Location {
+    return { longitude: src.longitude, latitude: src.latitude, altitude: src.altitude,
+            bearing:src.bearing, accuracy: src.accuracy, speed:src.speed}
+}
+
 // todo: this interface is deprecated, rewrite usages to use ILocationProvider (see below)
 export interface LocationService {
     currentPosition?:Location // this can be the last know position too
