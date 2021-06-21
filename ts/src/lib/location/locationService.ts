@@ -1,7 +1,7 @@
 // todo: use this interface in places.ts too
 export interface Location {
-    longitude:number
     latitude:number
+    longitude:number
     // when any of the below fields equal 0, means that they aren't available
     altitude?:number
     bearing?:number
@@ -11,7 +11,7 @@ export interface Location {
 
 /// creates a new location from the given source
 export function locationFrom(src:Location):Location {
-    return { longitude: src.longitude, latitude: src.latitude, altitude: src.altitude,
+    return { latitude: src.latitude, longitude: src.longitude,  altitude: src.altitude,
             bearing:src.bearing, accuracy: src.accuracy, speed:src.speed}
 }
 

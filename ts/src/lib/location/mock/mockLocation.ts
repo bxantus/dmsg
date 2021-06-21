@@ -25,7 +25,7 @@ interface Request {
 export class MockLocationProvider implements ILocationProvider {
     path:Location[] = []
     speedKph:number
-    #accuracy = 1.5
+    private _accuracy = 1.5 // todo: change to private fields onece firefox has them (from version 90)
     private currentSegment:PathSegment
     private pathIdx:number 
     private direction:1|-1 = 1 // direction to traverse the path segment
@@ -33,16 +33,16 @@ export class MockLocationProvider implements ILocationProvider {
     private timer:number = 0
 
     set accuracy(a:number) {
-        this.#accuracy = a
+        this._accuracy = a
         this.currentSegment.accuracy = a
     }
 
-    get accuracy() { return this.#accuracy }
+    get accuracy() { return this._accuracy }
     
     constructor(startPath:ShortLocation[] = PathAroundHeroesSquare, speedKph = 4) {
-        this.path = startPath.map(loc => make({longitude: loc[0], latitude: loc[1]}))
+        this.path = startPath.map(loc => make({latitude: loc[0], longitude: loc[1]}))
         this.pathIdx = 0
-        this.currentSegment = new PathSegment(this.path[0], this.path[1], this.#accuracy)
+        this.currentSegment = new PathSegment(this.path[0], this.path[1], this._accuracy)
         this.speedKph = speedKph
     }
     async getLastLocation() {
@@ -102,7 +102,7 @@ export class MockLocationProvider implements ILocationProvider {
                 this.direction = 1
         }
         this.currentSegment = new PathSegment(this.path[this.pathIdx],
-                                              this.path[this.pathIdx + this.direction], this.#accuracy)
+                                              this.path[this.pathIdx + this.direction], this._accuracy)
     }
 }
 
@@ -129,7 +129,7 @@ class PathSegment {
             const s = this.start
             const e = this.end
             this.current.latitude = s.latitude + (e.latitude - s.latitude) * this.progress / this.distance 
-            this.current.latitude = s.longitude + (e.longitude - s.longitude) * this.progress / this.distance 
+            this.current.longitude = s.longitude + (e.longitude - s.longitude) * this.progress / this.distance 
             this.current.accuracy = this.accuracy
             // todo: if we can should calculate bearing too
         }
