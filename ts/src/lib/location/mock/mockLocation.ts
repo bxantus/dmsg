@@ -25,7 +25,7 @@ interface Request {
 export class MockLocationProvider implements ILocationProvider {
     path:Location[] = []
     speedKph:number
-    private _accuracy = 1.5 // todo: change to private fields onece firefox has them (from version 90)
+    private _accuracy = 10 // todo: change to private fields onece firefox has them (from version 90)
     private currentSegment:PathSegment
     private pathIdx:number 
     private direction:1|-1 = 1 // direction to traverse the path segment
