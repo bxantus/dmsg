@@ -1,6 +1,7 @@
 package com.bxantus.modules
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import com.bxantus.messaging.DataObject
 import com.bxantus.messaging.Module
 import com.bxantus.messaging.RemoteObject
@@ -54,12 +55,13 @@ class LocationProvider(private val webActivity: WebActivity) {
             true
         } catch (e:Exception) {
             if (e is ResolvableApiException) {
-                val reqCode = 1 // todo: get a new request code for launching activity, similar to permission requests
-                e.startResolutionForResult(webActivity, reqCode)
-                // todo: wait for activity result and return true when it wasn't canceled (see CompletableDeferred)
-                //       result code of -1 means user enabled location from settings, 0 means cancelled (from logged experience)
+                val request = webActivity.createActivityRequest()
+                e.startResolutionForResult(webActivity, request.requestCode)
+                // wait for activity result
+                val result = request.response.await()
+                result == Activity.RESULT_OK
             }
-            false
+            else false
         }
     }
 
