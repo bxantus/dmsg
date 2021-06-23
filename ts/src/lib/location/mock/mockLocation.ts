@@ -1,6 +1,6 @@
 import { Location, ILocationProvider, LocationUpdateListener, LocationUpdateRequest, locationFrom } from "../locationService.ts"
 import { make } from "../../base.ts"
-import { distanceBetween } from "../distance.ts"
+import { distanceBetween, bearing } from "../distance.ts"
 
 type ShortLocation = [number, number] // lat/lon
 export const PathAroundHeroesSquare:ShortLocation[] = [[47.51536, 19.07759], // near the statues
@@ -115,6 +115,7 @@ class PathSegment {
         this.distance = distanceBetween(start, end)
         this.current = locationFrom(this.start)
         this.current.accuracy = this.accuracy
+        this.current.bearing = bearing(start.latitude, start.longitude, end.latitude, end.longitude)
     }
 
     // return the distance overflow (should be taken on the next segment)

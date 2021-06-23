@@ -23,3 +23,17 @@ export function distance(lat1:number, lon1:number, lat2:number, lon2:number) {
 export function distanceBetween(loc1:Location, loc2:Location) {
     return distance(loc1.latitude, loc1.longitude, loc2.latitude, loc2.longitude)
 }
+
+/// forward azimuth from point 1 towards point 2
+export function bearing(lat1:number, lon1:number, lat2:number, lon2:number) {
+    const φ1 = lat1 * Math.PI/180; // φ, λ in radians
+    const φ2 = lat2 * Math.PI/180;
+    const Δλ = (lon2-lon1) * Math.PI/180;
+
+    const y = Math.sin(Δλ) * Math.cos(φ2);
+    const x = Math.cos(φ1)*Math.sin(φ2) -
+            Math.sin(φ1)*Math.cos(φ2)*Math.cos(Δλ);
+    const θ = Math.atan2(y, x);
+    const brng = (θ*180/Math.PI + 360) % 360; // in degrees
+    return brng
+}
