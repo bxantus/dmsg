@@ -63,7 +63,7 @@ class WebViewTransport internal constructor(val id:Int, private val webView: Web
 
     override fun send(buf: ByteBuffer) {
         val encoded = Base64.encodeToString(buf.array(), 0, buf.limit(), Base64.NO_WRAP)
-        val message = "window.__receive($id, '$encoded');"
+        val message = "__receive($id, '$encoded');"
         webView.evaluateJavascript(message, ValueCallback {  })
     }
 

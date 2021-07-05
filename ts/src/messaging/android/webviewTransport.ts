@@ -63,7 +63,7 @@ export function webviewMessageReceiver(id:number, msg:string) {
 
 export function initializeConnection() {
     // from android, code should call: `window.__receive(id, "base64_encoded_message");`
-    (window as any).__receive = webviewMessageReceiver
+    globalThis.__receive = webviewMessageReceiver
     // NOTE: receive should be used also for closing connections from the Android side
     //       in that case we could use a different signature, like only one object arg
     //       like `{close: <id>}`
