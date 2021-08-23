@@ -132,7 +132,6 @@ class PathSegment {
             this.current.latitude = s.latitude + (e.latitude - s.latitude) * this.progress / this.distance 
             this.current.longitude = s.longitude + (e.longitude - s.longitude) * this.progress / this.distance 
             this.current.accuracy = this.accuracy
-            // todo: if we can should calculate bearing too
         }
         return 0
     }
