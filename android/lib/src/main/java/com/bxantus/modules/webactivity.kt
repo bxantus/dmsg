@@ -3,6 +3,7 @@ package com.bxantus.modules
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
+import android.view.KeyEvent
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
@@ -61,6 +62,9 @@ abstract class WebActivity : Activity() {
     }
 
     @ExperimentalStdlibApi
+    val events = Events()
+
+    @ExperimentalStdlibApi
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -74,12 +78,22 @@ abstract class WebActivity : Activity() {
         setupWebView(webView)
 
         val startPage = initialize(messaging)
+        messaging.serveModule("android://events", events.module)
         webView.loadUrl("https://$ASSET_HOST/assets/$startPage")
 
         // set this webView as the main content in the activity
         setContentView(webView)
     }
 
+    @ExperimentalStdlibApi
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_BACK && events.canGoBack) {
+            events.backPressed()
+            return true
+        }
+
+        return super.onKeyDown(keyCode, event)
+    }
     /**
      * Export any needed modules by your app via messaging
      * @return the starting url of your app to be loaded inside the webView
