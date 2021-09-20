@@ -56,6 +56,10 @@ abstract class WebActivity : Activity() {
         response.complete(resultCode) // NOTE: maybe data may be added too to response
     }
 
+    companion object {
+        private const val ASSET_HOST = "appassets.androidplatform.net"
+    }
+
     @ExperimentalStdlibApi
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -70,7 +74,7 @@ abstract class WebActivity : Activity() {
         setupWebView(webView)
 
         val startPage = initialize(messaging)
-        webView.loadUrl("https://appassets.androidplatform.net/assets/$startPage")
+        webView.loadUrl("https://$ASSET_HOST/assets/$startPage")
 
         // set this webView as the main content in the activity
         setContentView(webView)
@@ -93,6 +97,17 @@ abstract class WebActivity : Activity() {
                 return if (request != null)
                     assetLoader.shouldInterceptRequest(request.url)
                 else return super.shouldInterceptRequest(view, request as WebResourceRequest)
+            }
+
+            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+                if (request.url.host == ASSET_HOST)
+                    return false; // don't cancel loading assets
+
+                // Otherwise, the link is not for a page on my site, so launch another Activity that handles URLs
+                Intent(Intent.ACTION_VIEW, request.url).apply {
+                    startActivity(this)
+                }
+                return true
             }
         }
     }
