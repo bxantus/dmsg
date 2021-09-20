@@ -88,6 +88,8 @@ class MessagingConnection(private val transport:Transport, private val coScope:C
                 val ser = Serializer(exportedObjects)
                 ser.writeMessageHeader(MessageDirection.Response, msg, messageId)
                 val mod = exportedModules[args[0]]
+                // todo: module level functions should be wrapped in a callable object (which captures the module obj as this)
+                //       otherwise we can't call these methods using reflection
                 ser.writeValue(mod)  // will return undef for unknown modules
                 transport.send(ser.getBuffer())
             }
@@ -114,6 +116,8 @@ class MessagingConnection(private val transport:Transport, private val coScope:C
                         sendCallResponse(res)
                     }
                 }
+                // todo: handle object calls as well (ex. module level functions)
+                //       see the todo in loadmodule for details (we could ho with `obj is ModuleFunction`)
             }
         }
     }
