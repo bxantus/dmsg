@@ -15,13 +15,6 @@ export function locationFrom(src:Location):Location {
             bearing:src.bearing, accuracy: src.accuracy, speed:src.speed}
 }
 
-// todo: this interface is deprecated, rewrite usages to use ILocationProvider (see below)
-export interface LocationService {
-    currentPosition?:Location // this can be the last know position too
-    heading?:number  // if available it corresponds to user heading: 0 north, 90 east etc.
-    live:boolean     // when false currentPosition is the last known position
-}
-
 export interface LocationUpdateRequest {
     // the minimum interval to receive location updates
     interval:number
