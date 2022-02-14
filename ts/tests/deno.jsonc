@@ -1,7 +1,5 @@
 {
     "compilerOptions": {
-        "jsx": "react",
-        "jsxFactory": "h",
         "lib": ["dom", "esnext", "deno.ns", "deno.unstable"],
         "inlineSourceMap": true,
         "noImplicitAny": false,
