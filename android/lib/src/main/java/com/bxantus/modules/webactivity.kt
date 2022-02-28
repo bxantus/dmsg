@@ -75,6 +75,7 @@ abstract class WebActivity : Activity() {
 
         val messaging = MessagingInterface(webView)
         webView.addJavascriptInterface(messaging, "androidMessaging")
+        webView.settings.domStorageEnabled = true;                 // allow localStorage
         setupWebView(webView)
 
         val startPage = initialize(messaging)
