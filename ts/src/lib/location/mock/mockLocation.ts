@@ -19,6 +19,11 @@ interface Request {
     listener:LocationUpdateListener
 }
 
+interface MockLocationOptions {
+    speedKph?:number
+    provideLastLocation?:boolean
+}
+
 /// Will provide location updates on the path of lat/lon points
 /// if it reaches the end point it will turn around
 /// speed can be set in km/h-s
@@ -31,6 +36,7 @@ export class MockLocationProvider implements ILocationProvider {
     private direction:1|-1 = 1 // direction to traverse the path segment
     private requests:Request[] = []
     private timer:number = 0
+    private provideLastLocation:boolean
 
     set accuracy(a:number) {
         this._accuracy = a
@@ -39,14 +45,15 @@ export class MockLocationProvider implements ILocationProvider {
 
     get accuracy() { return this._accuracy }
     
-    constructor(startPath:ShortLocation[] = PathAroundHeroesSquare, speedKph = 4) {
+    constructor(startPath:ShortLocation[] = PathAroundHeroesSquare, options?:MockLocationOptions ) {
         this.path = startPath.map(loc => make({latitude: loc[0], longitude: loc[1]}))
         this.pathIdx = 0
         this.currentSegment = new PathSegment(this.path[0], this.path[1], this._accuracy)
-        this.speedKph = speedKph
+        this.speedKph = options?.speedKph ?? 4
+        this.provideLastLocation = options?.provideLastLocation ?? false
     }
     async getLastLocation() {
-        return this.currentSegment.current
+        return this.provideLastLocation ? this.currentSegment.current : undefined
     }
     /// checks whether settings are enabled for this kind of location request
     /// if not it will try to show system popup which will enable location
