@@ -7,6 +7,8 @@ export interface Location {
     bearing?:number
     accuracy?:number
     speed?:number
+    // when source is not set, it is the same as "sytem", meaning a valid fresh location
+    source?:"system"|"lastSaved" // lastSaved means that this is not a fresh location, is the last saved one 
 }
 
 /// creates a new location from the given source
