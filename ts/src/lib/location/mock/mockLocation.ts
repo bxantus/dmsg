@@ -95,7 +95,7 @@ export class MockLocationProvider implements ILocationProvider {
         }
         // send updates to the requestors
         for (const req of this.requests) 
-            req.listener(this.currentSegment.current)
+            req.listener(locationFrom(this.currentSegment.current))
     }
 
     private nextSegment() {
