@@ -5,6 +5,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.launch
 import java.nio.ByteBuffer
+import kotlin.reflect.KCallable
 import kotlin.reflect.full.callSuspend
 
 interface Transport {
@@ -88,37 +89,41 @@ class MessagingConnection(private val transport:Transport, private val coScope:C
                 val ser = Serializer(exportedObjects)
                 ser.writeMessageHeader(MessageDirection.Response, msg, messageId)
                 val mod = exportedModules[args[0]]
-                // todo: module level functions should be wrapped in a callable object (which captures the module obj as this)
-                //       otherwise we can't call these methods using reflection
-                ser.writeValue(mod)  // will return undef for unknown modules
+                if (mod != null) ser.writeModule(mod)
+                else ser.writeValue(null) // will return undef for unknown modules
                 transport.send(ser.getBuffer())
             }
             MessageType.Call -> {
                 val obj = des.readValue()
                 val method = des.readValue()
-                val args = des.readValue()
-                // todo: should check for any exceptions during the call, and answer the request accordingly
+                val args = des.readValue()  as Array<out Any?>
+                fun sendCallResponse(res:Any?) {
+                    val ser = Serializer(exportedObjects)
+                    ser.writeMessageHeader(MessageDirection.Response, msg, messageId)
+                    ser.writeValue(res)
+                    transport.send(ser.getBuffer())
+                }
                 if (obj is Any && method is String) {
                     val member = obj::class.members.find { it.name == method } ?: return
-                    fun sendCallResponse(res:Any?) {
-                        val ser = Serializer(exportedObjects)
-                        ser.writeMessageHeader(MessageDirection.Response, msg, messageId)
-                        ser.writeValue(res)
-                        transport.send(ser.getBuffer())
-                    }
-                    if (member.isSuspend) {
-                        coScope.launch {
-                            val res = member.callSuspend(obj, *args as Array<out Any?>)
-                            sendCallResponse(res)
-                        }
-                    } else {
-                        val res = member.call(obj, *args as Array<out Any?>)
-                        sendCallResponse(res)
-                    }
+                    callMemberAndSendResult(obj, member, args, ::sendCallResponse)
+
+                } else if (obj is BoundMethod<*>) {
+                    callMemberAndSendResult(obj.obj as Any, obj.method, args, ::sendCallResponse)
                 }
-                // todo: handle object calls as well (ex. module level functions)
-                //       see the todo in loadmodule for details (we could ho with `obj is ModuleFunction`)
             }
+        }
+    }
+
+    private fun callMemberAndSendResult(obj:Any, member:KCallable<*>, args:Array<out Any?>, sendResult:(res:Any?)->Unit) {
+        // todo: should check for any exceptions during the call, and answer the request accordingly
+        if (member.isSuspend) {
+            coScope.launch {
+                val res = member.callSuspend(obj, *args)
+                sendResult(res)
+            }
+        } else {
+            val res = member.call(obj, *args)
+            sendResult(res)
         }
     }
 

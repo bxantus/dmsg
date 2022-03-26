@@ -1,5 +1,8 @@
 package com.bxantus.messaging
 
+import kotlin.reflect.KFunction
+import kotlin.reflect.full.callSuspend
+
 @ExperimentalStdlibApi
 class RemoteObject(val handle:UInt, private val conn:MessagingConnection) {
     fun callAsync(vararg args:Any?) = conn.callObjectAsync(this, *args)
@@ -29,4 +32,13 @@ class ObjectStore {
         }
 
     fun getObject(handle:UInt) = objectsByHandle[handle]
+}
+
+/**
+ * Method storing the associated this value.
+ * Use the method member to query extra information about the method, like if it's a suspend function or not
+ */
+class BoundMethod<T>(val obj:T, val method:KFunction<T>) {
+    fun call(vararg args:Any?) = method.call(obj, *args)
+    suspend fun callSuspend(vararg args:Any?) = method.callSuspend(obj, *args)
 }

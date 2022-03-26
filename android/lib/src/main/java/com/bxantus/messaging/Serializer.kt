@@ -2,6 +2,8 @@ package com.bxantus.messaging
 
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import kotlin.reflect.KFunction
+import kotlin.reflect.KVisibility
 
 enum class SerializerTypes {
     Undef,
@@ -62,6 +64,7 @@ class Serializer(private val objectStore:ObjectStore) {
                 putByte(SerializerTypes.RemoteObjectHandle.ordinal)
                 putUint(value.handle)
             }
+            is Module -> writeModule(value)
             is DataObject -> writeDataObject(value, value::class.java)
             else -> {
                 // write data classes as objects
@@ -73,7 +76,6 @@ class Serializer(private val objectStore:ObjectStore) {
                     putUint(objectStore.getHandle(value))
                 }
             }
-
         }
     }
 
@@ -131,6 +133,24 @@ class Serializer(private val objectStore:ObjectStore) {
             putString(mem.name)
             mem.isAccessible = true
             writeValue(mem.get(obj))
+        }
+    }
+
+    fun writeModule(module:Module) {
+        if (writeIfBackref(module)) return
+        objectsWritten[module] = objectsWritten.size.toUInt()
+        putByte(SerializerTypes.Object.ordinal)
+        val cls = module::class.java
+        val functions = module::class.members.filter { it is KFunction && it.visibility == KVisibility.PUBLIC } as List<KFunction<*>>
+        putUint16(cls.declaredFields.size + functions.size)
+        for (mem in cls.declaredFields) {
+            putString(mem.name)
+            mem.isAccessible = true
+            writeValue(mem.get(module))
+        }
+        for (func in functions) {
+            putString(func.name)
+            writeValue(BoundMethod(module, func))
         }
     }
 
