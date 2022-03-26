@@ -47,6 +47,8 @@ class SystemEvent(val name:String) {
         handlers.removeAt(handlers.indexOfFirst { it.id == handlerId } )
     }
 
+    // todo: trigger shouldn't be accessible through RemoteObject interface
+    //       event and event emitter separation would be beneficial
     fun trigger(vararg args:Any) {
         for (handler in handlers) {
             handler.cb.callAsync(args)

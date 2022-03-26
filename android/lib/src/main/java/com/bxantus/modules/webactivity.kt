@@ -20,7 +20,11 @@ typealias PermissionHandler = (requestCode: Int,
 class ActivityRequest(public val requestCode:Int, public val response:Deferred<Int>) {
 }
 
-abstract class WebActivity : Activity() {
+class WebActivityConfig(val debugMode:Boolean) {
+
+}
+
+abstract class WebActivity(protected val config:WebActivityConfig) : Activity() {
     private val permissionHandlers = mutableListOf<PermissionHandler>()
     private val activityRequests = mutableListOf<ActivityRequest>()
     private val pendingActivityRequests = mutableMapOf<Int, CompletableDeferred<Int>>()
@@ -68,14 +72,15 @@ abstract class WebActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        WebView.setWebContentsDebuggingEnabled(true)
+        WebView.setWebContentsDebuggingEnabled(config.debugMode)
 
         var webView = WebView(this)
         webView.settings.javaScriptEnabled = true
+        webView.settings.domStorageEnabled = true;                 // allow localStorage
+        webView.settings.mediaPlaybackRequiresUserGesture = false; // allow sound effects
 
         val messaging = MessagingInterface(webView)
         webView.addJavascriptInterface(messaging, "androidMessaging")
-        webView.settings.domStorageEnabled = true;                 // allow localStorage
         setupWebView(webView)
 
         val startPage = initialize(messaging)
