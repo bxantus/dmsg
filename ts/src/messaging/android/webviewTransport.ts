@@ -61,6 +61,10 @@ export function webviewMessageReceiver(id:number, msg:string) {
     transport.receive(decodeBase64(msg))
 }
 
+declare global {
+    var __receive:(id:number, msg:string)=>void
+}
+
 export function initializeConnection() {
     // from android, code should call: `window.__receive(id, "base64_encoded_message");`
     globalThis.__receive = webviewMessageReceiver
