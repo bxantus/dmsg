@@ -17,7 +17,6 @@ import kotlinx.coroutines.MainScope
  *
  * All initiated connections will serve the modules given via serveModule
  */
-@ExperimentalStdlibApi
 class MessagingInterface(val webView:WebView) {
     // NOTE: when connections can be manipulated from the kotlin side, then access to activeConnections should
     //       be synchronized (or locked)

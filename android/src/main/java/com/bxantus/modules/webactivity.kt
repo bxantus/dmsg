@@ -65,10 +65,8 @@ abstract class WebActivity(protected val config:WebActivityConfig) : Activity() 
         private const val ASSET_HOST = "appassets.androidplatform.net"
     }
 
-    @ExperimentalStdlibApi
     val events = Events()
 
-    @ExperimentalStdlibApi
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -91,7 +89,6 @@ abstract class WebActivity(protected val config:WebActivityConfig) : Activity() 
         setContentView(webView)
     }
 
-    @ExperimentalStdlibApi
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         if (keyCode == KeyEvent.KEYCODE_BACK && events.canGoBack) {
             events.backPressed()
@@ -106,7 +103,6 @@ abstract class WebActivity(protected val config:WebActivityConfig) : Activity() 
      *         the Url should be relative to the assets folder, webActivity will prepend the hostName
      *         (ex. 'www/index.html')
      */
-    @ExperimentalStdlibApi
     abstract fun initialize(messaging:MessagingInterface):String
 
     private fun setupWebView(webView:WebView) {

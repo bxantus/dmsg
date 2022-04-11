@@ -27,7 +27,6 @@ enum class MessageType {
     Call,
 }
 
-@ExperimentalStdlibApi
 class MessagingConnection(private val transport:Transport, private val coScope:CoroutineScope, modules:Map<String, Module>? = null) {
     private val exportedObjects = ObjectStore()
     private val exportedModules = mutableMapOf<String, Module>()

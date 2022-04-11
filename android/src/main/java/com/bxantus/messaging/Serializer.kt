@@ -18,7 +18,6 @@ enum class SerializerTypes {
     Backref // back reference to an object/array already written in this stream (by idx.)
 }
 
-@ExperimentalUnsignedTypes @ExperimentalStdlibApi
 class Serializer(private val objectStore:ObjectStore) {
     companion object {
         const val BUFFER_SIZE = 4096
@@ -187,7 +186,6 @@ data class MessageHeader(val dir:MessageDirection, val msg:MessageType, val mess
 // RemoteObjectFactory returns Any to ease testing, concrete RemoteObject type is not that important here
 typealias RemoteObjectFactory = (handle:UInt) -> Any
 
-@ExperimentalUnsignedTypes @ExperimentalStdlibApi // needed for decodeToString call
 class Deserializer(private val input:ByteBuffer, private val objectStore:ObjectStore, private val remoteObjectFactory: RemoteObjectFactory) {
     private var offset = 0
     private val objectsRead = mutableListOf<Any?>()

@@ -12,7 +12,6 @@ import java.nio.ByteBuffer
 // todo: should split tests in different test suites
 //       currently serializer, and messaging tests are in the same suite, together with objectStore related tests
 //       at least the package could be changed to messaging and the suite name as well
-@ExperimentalStdlibApi
 class SerializerTest {
     val dummyRemoteObjectFactory = fun (_:UInt) = "Remote"
 

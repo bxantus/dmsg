@@ -3,7 +3,6 @@ package com.bxantus.messaging
 import kotlin.reflect.KFunction
 import kotlin.reflect.full.callSuspend
 
-@ExperimentalStdlibApi
 class RemoteObject(val handle:UInt, private val conn:MessagingConnection) {
     fun callAsync(vararg args:Any?) = conn.callObjectAsync(this, *args)
     suspend fun call(vararg args:Any?) = conn.callObjectAsync(this, *args).await()

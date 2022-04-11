@@ -3,7 +3,6 @@ package com.bxantus.modules
 import com.bxantus.messaging.Module
 import com.bxantus.messaging.RemoteObject
 
-@ExperimentalStdlibApi
 class Events {
     private val backButton = SystemEvent("back")
     val module = object : Module() {
@@ -23,13 +22,11 @@ class Events {
     val canGoBack get() = backAvailable
 }
 
-@ExperimentalStdlibApi
 class EventHandler(val id: Int, val cb/*callback*/:RemoteObject)
 
 /**
  * Represents an event (like back key pressed) to which users can subscribe via messaging
  */
-@ExperimentalStdlibApi
 class SystemEvent(val name:String) {
     private val handlers = mutableListOf<EventHandler>()
 

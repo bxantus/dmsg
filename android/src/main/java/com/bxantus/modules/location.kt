@@ -10,7 +10,6 @@ import com.google.android.gms.location.*
 import android.location.Location as AndroidLocation
 import kotlinx.coroutines.tasks.await
 
-@ExperimentalStdlibApi
 class LocationModule(webActivity: WebActivity) : Module() {
     val locationProvider = LocationProvider(webActivity)
 }
@@ -24,7 +23,6 @@ class Location(loc:AndroidLocation) : DataObject() {
     val speed = loc.speed
 }
 
-@ExperimentalStdlibApi
 class LocationProvider(private val webActivity: WebActivity) {
     private val fusedLocationClient = LocationServices.getFusedLocationProviderClient(webActivity)
 
